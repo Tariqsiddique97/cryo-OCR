@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cryo Calculator - Records</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: #0b1220;
+        color: #e9eefc;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 18px;
+      }
+      .card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 14px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 8px;
+      }
+      .muted {
+        opacity: 0.75;
+        font-size: 13px;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        margin: 10px 0;
+      }
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn {
+        background: #2563eb;
+        color: white;
+      }
+      .ghost {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #e9eefc;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        margin-top: 10px;
+      }
+      table {
+        min-width: 100%;
+        border-collapse: collapse;
+        white-space: nowrap;
+      }
+      th,
+      td {
+        padding: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        text-align: left;
+        font-size: 13px;
+        vertical-align: top;
+      }
+      th {
+        font-size: 12px;
+        opacity: 0.85;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(37, 99, 235, 0.18);
+        border: 1px solid rgba(37, 99, 235, 0.25);
+        font-size: 12px;
+      }
+      .err {
+        color: #fecaca;
+        background: rgba(239, 68, 68, 0.14);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 10px;
+        border-radius: 12px;
+        display: none;
+      }
+
+      /* Checkbox styling */
+      .print-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #2563eb;
+      }
+      th.checkbox-col, td.checkbox-col {
+        width: 40px;
+        text-align: center;
+      }
+
+      /* Timestamp parts - inline on desktop, stacked on mobile */
+      .ts-part {
+        display: inline;
+      }
+      .ts-part::after {
+        content: " ";
+      }
+      .ts-part:last-child::after {
+        content: "";
+      }
+      @media (max-width: 600px) {
+        .ts-part {
+          display: block;
+        }
+        .ts-part::after {
+          content: "";
+        }
+      }
+
+      /* Record row styles */
+      tr.record-row {
+        cursor: pointer;
+        transition: background 0.15s ease;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      tr.record-row:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+      tr.record-row.holding {
+        background: rgba(239, 68, 68, 0.15);
+      }
+      tr.record-row.selected-for-delete {
+        background: rgba(239, 68, 68, 0.25);
+      }
+
+      /* Delete confirmation modal */
+      .delete-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 20px;
+      }
+      .delete-modal.show {
+        display: flex;
+      }
+      .delete-modal-card {
+        background: #0b1220;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 400px;
+        text-align: center;
+      }
+      .delete-modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: #fecaca;
+      }
+      .delete-modal-text {
+        font-size: 14px;
+        opacity: 0.85;
+        margin-bottom: 20px;
+      }
+      .delete-modal-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+      }
+      .btn-danger {
+        background: #dc2626;
+        color: white;
+      }
+
+      /* Vertical details formatting */
+      .details-vertical {
+        line-height: 1.6;
+      }
+      .details-vertical .detail-line {
+        display: block;
+      }
+
+      /* Print styles */
+      @media print {
+        body {
+          background: white;
+          color: black;
+        }
+        .card {
+          background: white;
+          border: 1px solid #ccc;
+          box-shadow: none;
+        }
+        .ghost, .btn, #btnLogout {
+          display: none !important;
+        }
+        tr.record-row:not(.print-selected) {
+          display: none !important;
+        }
+        .print-checkbox, th.checkbox-col, td.checkbox-col {
+          display: none !important;
+        }
+        .hold-hint {
+          display: none !important;
+        }
+        .pill {
+          background: #e0e0e0;
+          border-color: #ccc;
+          color: black;
+        }
+        th, td {
+          border-bottom-color: #ccc;
+        }
+        .muted {
+          opacity: 1;
+          color: #666;
+        }
+      }
+
+      /* Hold indicator */
+      .hold-hint {
+        font-size: 11px;
+        opacity: 0.6;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="row" style="align-items: flex-start">
+          <div>
+            <h1>Records</h1>
+            <div class="muted">Saved delivery / calculation events for your account.</div>
+            <div class="muted" id="who"></div>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <button class="ghost" type="button" onclick="window.open('calculator.html','_self')">← Back to Calculator</button>
+            <button class="ghost" id="btnPrint" type="button">Print</button>
+            <button class="btn" id="btnRefresh" type="button">Refresh</button>
+            <button class="btn" id="btnLogout" type="button" style="background: #dc2626; color: white">Logout</button>
+          </div>
+        </div>
+
+        <div class="err" id="errBox"></div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="checkbox-col"><input type="checkbox" id="selectAll" class="print-checkbox" title="Select all for printing"></th>
+                <th>Time</th>
+                <th>Page</th>
+                <th>Gas</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="5" class="muted">Loading records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- <div class="muted" style="margin-top: 10px">
+          Note: this uses your Google Sheets endpoint. If you haven't set it yet, open
+          <span class="pill">calculator.html</span>
+          and paste your Apps Script Web App URL into
+          <b>SAVE_ENDPOINT</b>
+          .
+        </div> -->
+        <div class="hold-hint">Tip: Press and hold a record to delete it.</div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="delete-modal">
+      <div class="delete-modal-card">
+        <div class="delete-modal-title" id="deleteModalTitle">Delete Record?</div>
+        <div class="delete-modal-text" id="deleteModalText">Are you sure you want to delete this record? This action cannot be undone.</div>
+        <div class="delete-modal-buttons" id="deleteModalButtons">
+          <button class="ghost" id="cancelDelete">Cancel</button>
+          <button class="btn-danger" id="confirmDelete">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        function getAuth() {
+          try {
+            return JSON.parse(localStorage.getItem("cryo_auth") || "null");
+          } catch {
+            return null;
+          }
+        }
+        const auth = getAuth();
+        const who = document.getElementById("who");
+        who.textContent = auth?.email ? "Logged in as: " + auth.email : "Not logged in (no records).";
+
+        const errBox = document.getElementById("errBox");
+        const rowsEl = document.getElementById("rows");
+        const deleteModal = document.getElementById("deleteModal");
+        const deleteModalTitle = document.getElementById("deleteModalTitle");
+        const deleteModalText = document.getElementById("deleteModalText");
+        const deleteModalButtons = document.getElementById("deleteModalButtons");
+        const selectAllCheckbox = document.getElementById("selectAll");
+
+        // API Endpoint
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwwEX98Jgo6djkOqENe-2dWl-blam_6IOJaIeV5TYEc2-kPsV8_QI_9fMtCC_k5z7Tg/exec";
+
+        // Store records and pending delete
+        let allRecords = [];
+        let pendingDeleteRecord = null;
+        let holdTimer = null;
+        const HOLD_DURATION = 800; // ms to hold before delete prompt
+
+        function showErr(msg) {
+          errBox.textContent = msg;
+          errBox.style.display = "";
+        }
+        function clearErr() {
+          errBox.style.display = "none";
+        }
+
+        function esc(s) {
+          return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+        }
+
+        function formatTimestamp(ts) {
+          if (!ts) return "";
+          try {
+            const date = new Date(ts);
+            if (isNaN(date.getTime())) return esc(ts);
+            const monthDay = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            const year = date.getFullYear();
+            const timeStr = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+            return `<span class="ts-part">${monthDay}</span><span class="ts-part">${year}</span><span class="ts-part">${timeStr}</span>`;
+          } catch {
+            return esc(ts);
+          }
+        }
+
+        // Format details text vertically - each key measurement on its own line
+        function formatDetailsVertical(resultText, record) {
+          if (!resultText) {
+            // Build from record fields if no result_text
+            const lines = [];
+            if (record.tank_type) lines.push(`Tank: ${record.tank_type}`);
+            if (record.start_inches) lines.push(`Start: ${record.start_inches}"`);
+            if (record.end_inches) lines.push(`End: ${record.end_inches}"`);
+            if (record.capacity) lines.push(`Capacity: ${record.capacity} ${record.capacity_unit || ''}`);
+            if (record.flow_value) lines.push(`Flow: ${record.flow_value}`);
+            if (record.timer_elapsed) lines.push(`Timer: ${record.timer_elapsed}`);
+            if (record.source_tank) lines.push(`Source: ${record.source_tank}`);
+            if (record.destination) lines.push(`Destination: ${record.destination}`);
+            if (record.amount_scf) lines.push(`Amount: ${record.amount_scf} SCF`);
+            if (record.reserve_amount) lines.push(`Reserve: ${record.reserve_amount}`);
+            if (record.remaining) lines.push(`Remaining: ${record.remaining}`);
+            if (record.notes) lines.push(`Notes: ${record.notes}`);
+            return lines.map(l => `<span class="detail-line">${esc(l)}</span>`).join('');
+          }
+
+          // Parse result_text and format vertically
+          let text = String(resultText);
+
+          // First, split on bullet points (•)
+          let parts = text.split(/\s*•\s*/).map(s => s.trim()).filter(s => s);
+
+          // For each part, further split on known measurement labels
+          // These patterns match labels that start a new measurement
+          const labelPatterns = [
+            /(?=Change\s*\()/gi,
+            /(?=Approx\.?\s*SCF)/gi,
+            /(?=Total\s*SCF)/gi,
+            /(?=Gallons\s*\()/gi,
+            /(?=Pounds\s*\()/gi,
+            /(?=Timer:)/gi,
+            /(?=Entered\s*Flow)/gi,
+            /(?=Results\s*—)/gi,
+            /(?=Amount:)/gi,
+            /(?=Tanks:)/gi,
+            /(?=Remaining:)/gi,
+            /(?=Tank\d+:)/gi,
+          ];
+
+          // Process each part and split further if needed
+          let finalParts = [];
+          parts.forEach(part => {
+            let subParts = [part];
+            labelPatterns.forEach(pattern => {
+              let newSubParts = [];
+              subParts.forEach(sp => {
+                const splits = sp.split(pattern).map(s => s.trim()).filter(s => s);
+                newSubParts.push(...splits);
+              });
+              subParts = newSubParts;
+            });
+            finalParts.push(...subParts);
+          });
+
+          // Also try splitting on " → " arrows
+          let arrowSplit = [];
+          finalParts.forEach(part => {
+            if (part.includes(' → ')) {
+              arrowSplit.push(...part.split(' → ').map(s => s.trim()).filter(s => s));
+            } else {
+              arrowSplit.push(part);
+            }
+          });
+          finalParts = arrowSplit;
+
+          // Clean up: remove empty strings and trim
+          finalParts = finalParts.map(s => s.trim()).filter(s => s);
+
+          // If we still only have one part, try splitting on newlines or pipes
+          if (finalParts.length <= 1) {
+            finalParts = text.split(/[|\n]/).map(s => s.trim()).filter(s => s);
+          }
+
+          return finalParts.map(p => `<span class="detail-line">${esc(p)}</span>`).join('');
+        }
+
+        function render(records) {
+          allRecords = records;
+          if (!records || records.length === 0) {
+            rowsEl.innerHTML = '<tr><td colspan="5" class="muted">No saved records yet.</td></tr>';
+            return;
+          }
+          rowsEl.innerHTML = records
+            .map((r, idx) => {
+              const ts = formatTimestamp(r.timestamp);
+              const type = esc(r.type || "calc");
+              const gas = esc(r.gas || "");
+              const details = formatDetailsVertical(r.result_text, r);
+              const recordId = esc(r.record_id || idx);
+              return `<tr class="record-row print-selected" data-record-id="${recordId}" data-record-type="${type}" data-index="${idx}">
+        <td class="checkbox-col"><input type="checkbox" class="print-checkbox row-checkbox" checked></td>
+        <td>${ts}</td>
+        <td><span class="pill">${type}</span></td>
+        <td>${gas}</td>
+        <td class="details-vertical">${details}</td>
+      </tr>`;
+            })
+            .join("");
+
+          // Setup event listeners for new rows
+          setupRowListeners();
+        }
+
+        function setupRowListeners() {
+          const rows = document.querySelectorAll('.record-row');
+
+          rows.forEach(row => {
+            const checkbox = row.querySelector('.row-checkbox');
+
+            // Checkbox change handler for print selection
+            checkbox.addEventListener('change', function(e) {
+              e.stopPropagation();
+              if (this.checked) {
+                row.classList.add('print-selected');
+              } else {
+                row.classList.remove('print-selected');
+              }
+              updateSelectAllState();
+            });
+
+            // Prevent checkbox clicks from triggering row events
+            checkbox.addEventListener('mousedown', e => e.stopPropagation());
+            checkbox.addEventListener('touchstart', e => e.stopPropagation());
+
+            // Press and hold for delete - touch events
+            row.addEventListener('touchstart', function(e) {
+              if (e.target.classList.contains('print-checkbox')) return;
+              startHold(row);
+            });
+            row.addEventListener('touchend', function(e) {
+              cancelHold(row);
+            });
+            row.addEventListener('touchmove', function(e) {
+              cancelHold(row);
+            });
+            row.addEventListener('touchcancel', function(e) {
+              cancelHold(row);
+            });
+
+            // Press and hold for delete - mouse events
+            row.addEventListener('mousedown', function(e) {
+              if (e.target.classList.contains('print-checkbox')) return;
+              startHold(row);
+            });
+            row.addEventListener('mouseup', function(e) {
+              cancelHold(row);
+            });
+            row.addEventListener('mouseleave', function(e) {
+              cancelHold(row);
+            });
+          });
+        }
+
+        function startHold(row) {
+          row.classList.add('holding');
+          holdTimer = setTimeout(() => {
+            row.classList.remove('holding');
+            row.classList.add('selected-for-delete');
+            const idx = parseInt(row.dataset.index);
+            pendingDeleteRecord = allRecords[idx];
+            pendingDeleteRecord._rowElement = row;
+            showDeleteModal();
+          }, HOLD_DURATION);
+        }
+
+        function cancelHold(row) {
+          if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+          }
+          row.classList.remove('holding');
+        }
+
+        function showDeleteModal() {
+          // Reset modal to default state
+          deleteModalTitle.textContent = 'Delete Record?';
+          deleteModalText.textContent = 'Are you sure you want to delete this record? This action cannot be undone.';
+          deleteModalButtons.style.display = 'flex';
+          deleteModal.classList.add('show');
+        }
+
+        function hideDeleteModal() {
+          deleteModal.classList.remove('show');
+          if (pendingDeleteRecord && pendingDeleteRecord._rowElement) {
+            pendingDeleteRecord._rowElement.classList.remove('selected-for-delete');
+          }
+          pendingDeleteRecord = null;
+        }
+
+        function showDeletingState() {
+          deleteModalTitle.textContent = 'Deleting...';
+          deleteModalText.textContent = 'Please wait while the record is being deleted.';
+          deleteModalButtons.style.display = 'none';
+        }
+
+        async function deleteRecord() {
+          if (!pendingDeleteRecord) return;
+
+          const record = pendingDeleteRecord;
+
+          // Show deleting state
+          showDeletingState();
+
+          try {
+            const res = await fetch(API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain",
+              },
+              body: JSON.stringify({
+                action: "delete",
+                type: record.type,
+                record_id: record.record_id,
+                token: auth.token,
+              }),
+              redirect: "follow",
+            });
+
+            const data = await res.json();
+
+            if (!data.ok) {
+              hideDeleteModal();
+              showErr(data.error || "Failed to delete record.");
+              return;
+            }
+
+            // Remove from local array and re-render
+            allRecords = allRecords.filter(r => r.record_id !== record.record_id);
+            render(allRecords);
+            hideDeleteModal();
+          } catch (err) {
+            console.error("Delete error:", err);
+            hideDeleteModal();
+            showErr("Network error. Please check your connection.");
+          }
+        }
+
+        function updateSelectAllState() {
+          const checkboxes = document.querySelectorAll('.row-checkbox');
+          const checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+          selectAllCheckbox.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+          selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        }
+
+        // Select all checkbox handler
+        selectAllCheckbox.addEventListener('change', function() {
+          const checkboxes = document.querySelectorAll('.row-checkbox');
+          const rows = document.querySelectorAll('.record-row');
+          checkboxes.forEach((cb, i) => {
+            cb.checked = this.checked;
+            if (this.checked) {
+              rows[i].classList.add('print-selected');
+            } else {
+              rows[i].classList.remove('print-selected');
+            }
+          });
+        });
+
+        // Delete modal buttons
+        document.getElementById('cancelDelete').addEventListener('click', hideDeleteModal);
+        document.getElementById('confirmDelete').addEventListener('click', deleteRecord);
+
+        // Close modal on background click
+        deleteModal.addEventListener('click', function(e) {
+          if (e.target === deleteModal) {
+            hideDeleteModal();
+          }
+        });
+
+        async function load() {
+          clearErr();
+          if (!auth?.token) {
+            render([]);
+            showErr("Please login to view your records.");
+            return;
+          }
+
+          // Show loading state
+          rowsEl.innerHTML = '<tr><td colspan="5" class="muted">Loading records...</td></tr>';
+
+          try {
+            // Fetch all records from backend using POST with text/plain to avoid CORS preflight
+            const res = await fetch(API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain",
+              },
+              body: JSON.stringify({
+                action: "fetch",
+                type: "all",
+                token: auth.token,
+                limit: 100,
+              }),
+              redirect: "follow",
+            });
+
+            const data = await res.json();
+
+            if (!data.ok || !data.data) {
+              showErr(data.error || "Failed to load records.");
+              return;
+            }
+
+            // Combine all record types
+            const records = [];
+
+            if (data.data.calc && data.data.calc.records) {
+              data.data.calc.records.forEach((r) => records.push({ ...r, type: "calc" }));
+            }
+            if (data.data.split && data.data.split.records) {
+              data.data.split.records.forEach((r) => records.push({ ...r, type: "split" }));
+            }
+            if (data.data.reserve && data.data.reserve.records) {
+              data.data.reserve.records.forEach((r) => records.push({ ...r, type: "reserve" }));
+            }
+
+            // Sort by timestamp (newest first)
+            records.sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+
+            render(records);
+          } catch (err) {
+            console.error("Load error:", err);
+            showErr("Network error. Please check your connection.");
+          }
+        }
+
+        document.getElementById("btnRefresh").addEventListener("click", load);
+        document.getElementById("btnPrint").addEventListener("click", () => {
+          // Check if any records are selected
+          const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+          if (selectedCount === 0) {
+            showErr("Please select at least one record to print.");
+            return;
+          }
+          clearErr();
+          window.print();
+        });
+        document.getElementById("btnLogout").addEventListener("click", () => {
+          localStorage.removeItem("cryo_auth");
+          window.location.href = "index.html";
+        });
+
+        load();
+      })();
+    </script>
+  </body>
+</html>

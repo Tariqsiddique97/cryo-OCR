@@ -1,0 +1,217 @@
+shared JS file, e.g. api.js.
+
+// ===============================
+// Cryo Calculator – API CONFIG
+// ===============================
+const CRYO_API = {
+  ENDPOINT: "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE",
+
+  STORAGE_KEYS: {
+    AUTH: "cryo_auth",
+    CALC: "cryoCalcRecords",
+    SPLIT: "cryoSplitRecords",
+    RESERVE: "cryoReserveRecords"
+  }
+};
+
+2️⃣ AUTH (LOGIN PAGE JS)
+login.js
+// ===============================
+// LOGIN
+// ===============================
+async function loginUser(email, password) {
+  const res = await fetch(CRYO_API.ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "login",
+      email,
+      password
+    })
+  });
+
+  const data = await res.json();
+
+  if (!data.ok) {
+    alert(data.error || "Login failed");
+    return false;
+  }
+
+  // Save auth session
+  localStorage.setItem(
+    CRYO_API.STORAGE_KEYS.AUTH,
+    JSON.stringify(data.auth)
+  );
+
+  return true;
+}
+
+Example login button handler
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const ok = await loginUser(email, password);
+  if (ok) window.location.href = "index.html";
+});
+
+3️⃣ AUTH HELPERS (SHARED)
+
+Add this to api.js or a shared utilities file.
+
+// ===============================
+// AUTH HELPERS
+// ===============================
+function getAuth() {
+  const raw = localStorage.getItem(CRYO_API.STORAGE_KEYS.AUTH);
+  if (!raw) return null;
+
+  const auth = JSON.parse(raw);
+  if (auth.exp && Date.now() / 1000 > auth.exp) {
+    localStorage.removeItem(CRYO_API.STORAGE_KEYS.AUTH);
+    return null;
+  }
+  return auth;
+}
+
+function isLoggedIn() {
+  return !!getAuth();
+}
+
+4️⃣ SAVE RECORD (CALC / SPLIT / RESERVE)
+Generic Save Function (used everywhere)
+// ===============================
+// SAVE RECORD (GENERIC)
+// ===============================
+async function saveRecord(type, record) {
+  const auth = getAuth();
+
+  // 1. Save locally first (offline-safe)
+  const key =
+    type === "calc"
+      ? CRYO_API.STORAGE_KEYS.CALC
+      : type === "split"
+      ? CRYO_API.STORAGE_KEYS.SPLIT
+      : CRYO_API.STORAGE_KEYS.RESERVE;
+
+  const local = JSON.parse(localStorage.getItem(key)) || [];
+  record.timestamp = record.timestamp || new Date().toISOString();
+  record.source = "local";
+
+  local.unshift(record);
+  localStorage.setItem(key, JSON.stringify(local));
+
+  // 2. If not logged in or offline, stop here
+  if (!auth || !navigator.onLine) return;
+
+  // 3. Sync to Google Sheets
+  try {
+    const res = await fetch(CRYO_API.ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save",
+        type,
+        token: auth.token,
+        record
+      })
+    });
+
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    // Mark last record as synced
+    local[0].source = "sync";
+    localStorage.setItem(key, JSON.stringify(local));
+  } catch (err) {
+    console.warn("Save sync failed, will retry later", err);
+  }
+}
+
+5️⃣ WIRED SAVE BUTTONS
+Calculator
+window.saveCalcRecord = function () {
+  const record = {
+    tank_type: tankType.value,
+    full_inches: fullInches.value,
+    start_inches: startInches.value,
+    end_inches: endInches.value,
+    capacity: fullCap.value,
+    capacity_unit: capUnit.value,
+    gas: gas.value,
+    flow_value: flowValue.value,
+    timer_elapsed: elapsed.innerText,
+    result_text: output.innerText
+  };
+
+  saveRecord("calc", record);
+  alert("Calculation saved");
+};
+
+Split
+function saveSplit() {
+  const record = {
+    source_tank: splitSource.value,
+    destination: splitDest.value,
+    amount_scf: splitAmount.value,
+    gas: splitGas.value,
+    result_text: splitOutput.innerText
+  };
+
+  saveRecord("split", record);
+  alert("Split saved");
+}
+
+Reserve
+function saveReserve() {
+  const record = {
+    reserve_amount: resAmount.value,
+    gas: resGas.value,
+    remaining: resRemaining.innerText,
+    warning_flag: resWarning.classList.contains("warn"),
+    result_text: resOutput.innerText
+  };
+
+  saveRecord("reserve", record);
+  alert("Reserve saved");
+}
+
+6️⃣ FETCH RECORDS (HISTORY PAGE)
+records.js
+// ===============================
+// FETCH RECORDS
+// ===============================
+async function fetchRecords(type = "all", limit = 100) {
+  const auth = getAuth();
+  if (!auth) return null;
+
+  const res = await fetch(CRYO_API.ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "fetch",
+      type,
+      limit,
+      token: auth.token
+    })
+  });
+
+  const data = await res.json();
+  if (!data.ok) {
+    alert("Failed to load records");
+    return null;
+  }
+  return data.data;
+}
+
+Example render call
+document.addEventListener("DOMContentLoaded", async () => {
+  const cloud = await fetchRecords("all", 200);
+
+  const localCalc = JSON.parse(
+    localStorage.getItem(CRYO_API.STORAGE_KEYS.CALC)
+  ) || [];
+
+  // Merge + render however you like
+  renderRecords([...localCalc, ...(cloud?.calc?.records || [])]);
+});

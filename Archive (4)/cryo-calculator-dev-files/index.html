@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cryo Tank Calculator</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0066cc" />
+
+    <!-- iOS home-screen icon (Safari ignores manifest icons) -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" sizes="180x180" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <!-- (Optional) favicon for desktop browsers -->
+    <link rel="icon" href="/icons/icon-192.png" sizes="192x192" />
+
+    <style>
+      /* Splash */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        background: linear-gradient(180deg, #003366, #0066cc);
+        color: #fff;
+        overflow: hidden;
+      }
+      #splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        z-index: 1000;
+        animation: fadeOut 1s ease 3s forwards;
+      }
+      @keyframes fadeOut {
+        to {
+          opacity: 0;
+          visibility: hidden;
+        }
+      }
+      h1 {
+        font-size: 2em;
+        margin-bottom: 0.3em;
+      }
+      h2 {
+        font-size: 1.2em;
+        font-weight: 500;
+        margin: 0.2em 0 0.8em 0;
+        opacity: 0.95;
+      }
+      p {
+        font-size: 0.9em;
+        opacity: 0.8;
+        margin: 0 0 1.5em 0;
+      }
+      h1,
+      h2,
+      p {
+        max-width: 85%;
+      }
+      img.icon {
+        width: 120px;
+        height: auto;
+        margin: 0.5em 0 0.7em 0;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+      }
+      #app {
+        opacity: 0;
+        transition: opacity 1s ease;
+      }
+      body.splash-done #app {
+        opacity: 1;
+      }
+      iframe {
+        border: none;
+        width: 100%;
+        height: 100vh;
+      }
+
+      /* Modal Form Styles - Matches Calculator App */
+      .modal-card {
+        width: min(420px, 100%);
+        background: #0b1220;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      }
+      .modal-title {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: #e9eefc;
+      }
+      .modal-subtitle {
+        color: rgba(233, 238, 252, 0.75);
+        font-size: 14px;
+        margin-bottom: 20px;
+      }
+      .form-label {
+        display: block;
+        color: rgba(233, 238, 252, 0.85);
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 6px;
+      }
+      .form-input {
+        width: 100%;
+        padding: 12px 14px;
+        font-size: 16px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+        color: #e9eefc;
+        box-sizing: border-box;
+        font-family: inherit;
+        -webkit-appearance: none;
+      }
+      .form-input::placeholder {
+        color: rgba(233, 238, 252, 0.5);
+      }
+      .form-input:focus {
+        outline: none;
+        border-color: #1a73e8;
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .form-group {
+        margin-bottom: 16px;
+      }
+      .password-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .password-wrapper .form-input {
+        padding-right: 48px;
+      }
+      .toggle-password {
+        position: absolute;
+        right: 12px;
+        background: none;
+        border: none;
+        padding: 4px;
+        cursor: pointer;
+        color: rgba(233, 238, 252, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: auto;
+        margin: 0;
+      }
+      .toggle-password:hover {
+        color: rgba(233, 238, 252, 0.9);
+      }
+      .toggle-password svg {
+        width: 22px;
+        height: 22px;
+      }
+      .btn-primary {
+        background: #1a73e8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 20px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        font-family: inherit;
+      }
+      .btn-primary:hover {
+        background: #1565c0;
+      }
+      .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .btn-clear {
+        background: rgba(255, 255, 255, 0.08);
+        color: #e9eefc;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 10px;
+        padding: 12px 20px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        font-family: inherit;
+      }
+      .btn-clear:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .btn-row {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+      .muted {
+        color: rgba(233, 238, 252, 0.75);
+        font-size: 14px;
+      }
+      .err {
+        color: #fecaca;
+        background: rgba(239, 68, 68, 0.14);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 14px;
+      }
+      .divider {
+        margin-top: 20px;
+        text-align: center;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 16px;
+      }
+      .link-btn {
+        background: none;
+        border: none;
+        color: #4da6ff;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: underline;
+        padding: 0;
+        margin: 0;
+        width: auto;
+        font-family: inherit;
+      }
+      .link-btn:hover {
+        color: #7dc4ff;
+      }
+    </style>
+
+    <script>
+      // Register service worker early
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Splash -->
+    <div id="splash">
+      <h1>Cryo Tank Calculator</h1>
+      <img src="/icons/icon-192.png" alt="Cryo Calculator Icon" class="icon" />
+      <h2>Offload smarter. Calibrate faster. Work safer.</h2>
+      <p>Precision cryogenic transfer tool for drivers and technicians</p>
+    </div>
+
+    <!-- App -->
+    <div id="app">
+      <iframe id="appFrame" src="/calculator.html" style="visibility: hidden"></iframe>
+    </div>
+
+    <script>
+      // API Configuration
+      const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwwEX98Jgo6djkOqENe-2dWl-blam_6IOJaIeV5TYEc2-kPsV8_QI_9fMtCC_k5z7Tg/exec";
+
+      // Splash + Login Gate
+      window.addEventListener("load", () => {
+        const modal = document.getElementById("loginModal");
+        const emailEl = document.getElementById("loginEmail");
+        const pinEl = document.getElementById("loginPin");
+        const errEl = document.getElementById("loginErr");
+        const iframe = document.getElementById("appFrame");
+        const loginBtn = document.getElementById("loginBtn");
+
+        const getAuth = () => {
+          try {
+            return JSON.parse(localStorage.getItem("cryo_auth") || "null");
+          } catch {
+            return null;
+          }
+        };
+        const setAuth = (authData) => {
+          localStorage.setItem("cryo_auth", JSON.stringify(authData));
+        };
+
+        const showErr = (msg) => {
+          if (!errEl) return;
+          errEl.textContent = msg;
+          errEl.style.display = "";
+        };
+        const hideErr = () => {
+          if (!errEl) return;
+          errEl.style.display = "none";
+        };
+
+        // Always finish splash quickly (app loads), but lock Save + History behind login
+        setTimeout(() => document.body.classList.add("splash-done"), 300);
+
+        const auth = getAuth();
+        if (auth && auth.token && auth.email) {
+          // Check if token is expired
+          const now = Math.floor(Date.now() / 1000);
+          if (auth.exp && now < auth.exp) {
+            if (iframe) iframe.style.visibility = "visible";
+            return;
+          }
+        }
+
+        if (iframe) iframe.style.visibility = "visible";
+        if (modal) modal.style.display = "flex";
+
+        // Allow enter key to submit
+        if (pinEl) {
+          pinEl.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") document.getElementById("loginBtn")?.click();
+          });
+        }
+        if (emailEl) {
+          emailEl.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") document.getElementById("loginBtn")?.click();
+          });
+        }
+
+        document.getElementById("loginBtn")?.addEventListener("click", async () => {
+          hideErr();
+          const email = (emailEl?.value || "").trim();
+          const password = (pinEl?.value || "").trim();
+
+          if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            showErr("Enter a valid email.");
+            return;
+          }
+          if (!password || password.length < 1) {
+            showErr("Password is required.");
+            return;
+          }
+
+          // Disable button and show loading
+          loginBtn.disabled = true;
+          loginBtn.textContent = "Logging in...";
+
+          try {
+            // Call the backend login API using POST with text/plain to avoid CORS preflight
+            console.log("calling API ");
+            const response = await fetch(API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain"
+              },
+              body: JSON.stringify({
+                action: "login",
+                email: email,
+                password: password
+              }),
+              redirect: "follow"
+            });
+
+            const data = await response.json();
+            console.log(data, "data");
+
+            if (!data.ok || !data.auth) {
+              showErr(data.error || "Login failed. Please check your credentials.");
+              loginBtn.disabled = false;
+              loginBtn.textContent = "Login";
+              return;
+            }
+
+            // Save auth data (includes token, user_id, email, role, exp)
+            setAuth(data.auth);
+
+            if (modal) modal.style.display = "none";
+            if (iframe) iframe.src = iframe.src; // Reload iframe to pick up new auth
+          } catch (err) {
+            console.error("Login error:", err);
+            showErr("Network error. Please check your connection and try again.");
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Login";
+          }
+        });
+
+        document.getElementById("loginSkip")?.addEventListener("click", () => {
+          // Create dummy guest user (no API call)
+          const guestAuth = {
+            user_id: "guest-" + Date.now(),
+            email: "guest@cryo-calculator.local",
+            role: "guest",
+            token: "guest-token-" + Date.now(),
+            exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 days from now
+          };
+          setAuth(guestAuth);
+          if (modal) modal.style.display = "none";
+          if (iframe) iframe.src = iframe.src; // Reload iframe to pick up new auth
+        });
+
+        // Show registration modal
+        document.getElementById("showRegister")?.addEventListener("click", () => {
+          if (modal) modal.style.display = "none";
+          const registerModal = document.getElementById("registerModal");
+          if (registerModal) registerModal.style.display = "flex";
+        });
+
+        // Show login modal from registration
+        document.getElementById("showLogin")?.addEventListener("click", () => {
+          const registerModal = document.getElementById("registerModal");
+          if (registerModal) registerModal.style.display = "none";
+          if (modal) modal.style.display = "flex";
+        });
+
+        // Registration form handling
+        const registerModal = document.getElementById("registerModal");
+        const regEmailEl = document.getElementById("registerEmail");
+        const regPasswordEl = document.getElementById("registerPassword");
+        const regConfirmEl = document.getElementById("registerConfirm");
+        const regErrEl = document.getElementById("registerErr");
+        const registerBtn = document.getElementById("registerBtn");
+
+        const showRegErr = (msg) => {
+          if (!regErrEl) return;
+          regErrEl.textContent = msg;
+          regErrEl.style.display = "";
+        };
+        const hideRegErr = () => {
+          if (!regErrEl) return;
+          regErrEl.style.display = "none";
+        };
+
+        // Allow enter key to submit registration
+        [regEmailEl, regPasswordEl, regConfirmEl].forEach(el => {
+          el?.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") registerBtn?.click();
+          });
+        });
+
+        registerBtn?.addEventListener("click", async () => {
+          hideRegErr();
+          const email = (regEmailEl?.value || "").trim();
+          const password = (regPasswordEl?.value || "").trim();
+          const confirmPassword = (regConfirmEl?.value || "").trim();
+
+          if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            showRegErr("Enter a valid email.");
+            return;
+          }
+          if (!password || password.length < 6) {
+            showRegErr("Password must be at least 6 characters.");
+            return;
+          }
+          if (password !== confirmPassword) {
+            showRegErr("Passwords do not match.");
+            return;
+          }
+
+          // Disable button and show loading
+          registerBtn.disabled = true;
+          registerBtn.textContent = "Creating account...";
+
+          try {
+            const response = await fetch(API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain"
+              },
+              body: JSON.stringify({
+                action: "register",
+                email: email,
+                password: password,
+                confirmPassword: confirmPassword
+              }),
+              redirect: "follow"
+            });
+
+            const data = await response.json();
+
+            if (!data.ok || !data.auth) {
+              showRegErr(data.error || "Registration failed. Please try again.");
+              registerBtn.disabled = false;
+              registerBtn.textContent = "Create Account";
+              return;
+            }
+
+            // Save auth data (user is automatically logged in after registration)
+            setAuth(data.auth);
+
+            if (registerModal) registerModal.style.display = "none";
+            if (iframe) iframe.src = iframe.src; // Reload iframe to pick up new auth
+          } catch (err) {
+            console.error("Registration error:", err);
+            showRegErr("Network error. Please check your connection and try again.");
+            registerBtn.disabled = false;
+            registerBtn.textContent = "Create Account";
+          }
+        });
+      });
+    </script>
+
+    <!-- ===== Login Modal ===== -->
+    <div
+      id="loginModal"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      "
+    >
+      <div class="modal-card">
+        <div class="modal-title">Login</div>
+        <div class="modal-subtitle">Enter your email and password to unlock Save + History.</div>
+
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="loginEmail" type="email" placeholder="you@email.com" class="form-input" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="password-wrapper">
+            <input id="loginPin" type="password" placeholder="Enter your password" class="form-input" />
+            <button type="button" class="toggle-password" data-target="loginPin" aria-label="Toggle password visibility">
+              <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg class="eye-off-icon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="loginErr" class="err" style="display: none; margin-bottom: 16px"></div>
+
+        <div class="btn-row">
+          <button id="loginSkip" type="button" class="btn-clear">Continue as Guest</button>
+          <button id="loginBtn" type="button" class="btn-primary">Login</button>
+        </div>
+
+        <div class="divider">
+          <span class="muted">Don't have an account?</span>
+          <button id="showRegister" type="button" class="link-btn">Create Account</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Registration Modal ===== -->
+    <div
+      id="registerModal"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      "
+    >
+      <div class="modal-card">
+        <div class="modal-title">Create Account</div>
+        <div class="modal-subtitle">Register to save your calculations and sync across devices.</div>
+
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="registerEmail" type="email" placeholder="you@email.com" class="form-input" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="password-wrapper">
+            <input id="registerPassword" type="password" placeholder="At least 6 characters" class="form-input" />
+            <button type="button" class="toggle-password" data-target="registerPassword" aria-label="Toggle password visibility">
+              <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg class="eye-off-icon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <div class="password-wrapper">
+            <input id="registerConfirm" type="password" placeholder="Re-enter your password" class="form-input" />
+            <button type="button" class="toggle-password" data-target="registerConfirm" aria-label="Toggle password visibility">
+              <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg class="eye-off-icon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="registerErr" class="err" style="display: none; margin-bottom: 16px"></div>
+
+        <div class="btn-row">
+          <button id="showLogin" type="button" class="btn-clear">Back to Login</button>
+          <button id="registerBtn" type="button" class="btn-primary">Create Account</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Password visibility toggle script -->
+    <script>
+      document.querySelectorAll('.toggle-password').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const targetId = this.getAttribute('data-target');
+          const input = document.getElementById(targetId);
+          const eyeIcon = this.querySelector('.eye-icon');
+          const eyeOffIcon = this.querySelector('.eye-off-icon');
+
+          if (input.type === 'password') {
+            input.type = 'text';
+            eyeIcon.style.display = 'none';
+            eyeOffIcon.style.display = 'block';
+          } else {
+            input.type = 'password';
+            eyeIcon.style.display = 'block';
+            eyeOffIcon.style.display = 'none';
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

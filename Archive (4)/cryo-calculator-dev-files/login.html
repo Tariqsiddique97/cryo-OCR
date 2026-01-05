@@ -1,0 +1,54 @@
+<!-- login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cryo Calculator Login</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0066cc">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(180deg, #003366, #0066cc);
+      color: white;
+      font-family: system-ui, sans-serif;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 0.3em;
+    }
+    p {
+      opacity: 0.9;
+      margin-bottom: 1.5em;
+    }
+    button {
+      background: white;
+      color: #003366;
+      border: none;
+      border-radius: 10px;
+      padding: 0.7em 2em;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Cryo Tank Calculator</h1>
+  <h2>Offload smarter. Calibrate faster. Work safer.<h2>
+  <p>Precision cryogenic transfer tool for drivers and technicians</p>
+  <button onclick="enterApp()">Launch Calculator</button>
+
+  <script>
+    function enterApp() {
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>

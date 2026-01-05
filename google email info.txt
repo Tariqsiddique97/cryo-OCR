@@ -1,0 +1,14 @@
+Login on Index.html
+Email + PIN
+
+Save button visibility
+Hidden unless logged in
+
+History page name
+records.html
+
+https://script.google.com/macros/s/AKfycbx9W6DgUGqQL1Tfzg_LetWsVps2sy76yoKgviXZQmm8cQ-RHu7Rduqf317uPA7e2ki4XA/exec
+
+Google Sheets Login:
+cryocalculator@gmail.com
+PW: CryoDev2026!

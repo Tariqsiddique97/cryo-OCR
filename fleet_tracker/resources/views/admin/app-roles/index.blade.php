@@ -1,0 +1,7 @@
+<x-app-layout>
+    <x-slot name="header"><h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Manage App Roles') }}</h2></x-slot>
+    <div class="py-12"><div class="max-w-7xl mx-auto sm:px-6 lg:px-8"><div class="bg-white overflow-hidden shadow-sm sm:rounded-lg"><div class="p-6 bg-white border-b"><div class="flex justify-end mb-4"><a href="{{ route('admin.app-roles.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Create New Role</a></div>
+    <table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role Name</th><th class="relative px-6 py-3"></th></tr></thead>
+    <tbody class="bg-white divide-y">@forelse ($roles as $role)<tr><td class="px-6 py-4 font-medium">{{ $role->name }}</td><td class="px-6 py-4 text-right text-sm font-medium"><a href="{{ route('admin.app-roles.show', $role->id) }}" class="text-gray-600">View</a><a href="{{ route('admin.app-roles.edit', $role->id) }}" class="text-indigo-600 ml-4">Edit</a><form class="inline-block" action="{{ route('admin.app-roles.destroy', $role->id) }}" method="POST" onsubmit="return confirm('Are you sure?');">@csrf @method('DELETE')<button type="submit" class="text-red-600 ml-4">Delete</button></form></td></tr>@empty<tr><td class="px-6 py-4 text-center" colspan="2">No roles found.</td></tr>@endforelse</tbody></table>
+    </div></div></div></div>
+</x-app-layout>

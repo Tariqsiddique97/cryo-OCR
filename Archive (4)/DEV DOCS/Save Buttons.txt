@@ -1,0 +1,47 @@
+WIRED SAVE BUTTONS
+Calculator
+window.saveCalcRecord = function () {
+  const record = {
+    tank_type: tankType.value,
+    full_inches: fullInches.value,
+    start_inches: startInches.value,
+    end_inches: endInches.value,
+    capacity: fullCap.value,
+    capacity_unit: capUnit.value,
+    gas: gas.value,
+    flow_value: flowValue.value,
+    timer_elapsed: elapsed.innerText,
+    result_text: output.innerText
+  };
+
+  saveRecord("calc", record);
+  alert("Calculation saved");
+};
+
+Split
+function saveSplit() {
+  const record = {
+    source_tank: splitSource.value,
+    destination: splitDest.value,
+    amount_scf: splitAmount.value,
+    gas: splitGas.value,
+    result_text: splitOutput.innerText
+  };
+
+  saveRecord("split", record);
+  alert("Split saved");
+}
+
+Reserve
+function saveReserve() {
+  const record = {
+    reserve_amount: resAmount.value,
+    gas: resGas.value,
+    remaining: resRemaining.innerText,
+    warning_flag: resWarning.classList.contains("warn"),
+    result_text: resOutput.innerText
+  };
+
+  saveRecord("reserve", record);
+  alert("Reserve saved");
+}

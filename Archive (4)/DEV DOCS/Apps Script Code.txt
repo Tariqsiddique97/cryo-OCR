@@ -1,0 +1,773 @@
+// Apps Script Code (single file: Code.gs)
+/************************************************************
+ * Cryo Calculator - Google Sheets Backend (Apps Script)
+ * Endpoints:
+ *   GET  ?action=ping
+ *   POST { action:"login", email, password }
+ *   POST { action:"save", type:"calc|split|reserve", token, record:{} }
+ *   POST { action:"fetch", type:"calc|split|reserve|all", token, limit }
+ *
+ * Deployment:
+ *   Deploy as Web App:
+ *     - Execute as: Me
+ *     - Who has access: Anyone with the link
+ ************************************************************/
+
+/** ====== CONFIG ====== **/
+const CONFIG = {
+  // If this script is bound to the spreadsheet, you can leave SHEET_ID blank.
+  SHEET_ID: "",
+
+  // REQUIRED: change this to a long random string.
+  TOKEN_SECRET: "mySecretKey_2024_xyz789abc123def456ghi789jkl012mno345pqr678stu901vwx234",
+
+  // Session duration
+  TOKEN_TTL_SECONDS: 60 * 60 * 24 * 7, // 7 days
+
+  // Sheet names
+  SHEETS: {
+    USERS: "users",
+    CALC: "calc_records",
+    SPLIT: "split_records",
+    RESERVE: "reserve_records",
+    AUDIT: "audit_log" // optional
+  }
+};
+/** ====== ROUTING ====== **/
+/**
+ * doGet handles all GET requests including CORS preflight workaround.
+ *
+ * IMPORTANT: Google Apps Script Web Apps do NOT support:
+ * - Custom response headers (no Access-Control-Allow-Origin)
+ * - OPTIONS method (doOptions is never called)
+ *
+ * SOLUTION: All requests must go through doGet or doPost.
+ * For CORS to work, deploy with "Anyone" access (not "Anyone with link").
+ *
+ * If you still get CORS errors, use the JSONP callback parameter:
+ * GET ?action=ping&callback=myCallback
+ * Returns: myCallback({"ok":true,...})
+ */
+function doGet(e) {
+  const params = (e && e.parameter) ? e.parameter : {};
+  const action = params.action || "ping";
+  const callback = params.callback || null; // JSONP support
+
+  try {
+    let result;
+
+    switch (action) {
+      case "ping":
+        result = { ok: true, service: "cryo-sheets-api", time: new Date().toISOString() };
+        break;
+
+      case "login":
+        // Support GET-based login for CORS workaround
+        result = handleLoginGet_(params);
+        break;
+
+      case "fetch":
+        // Support GET-based fetch for CORS workaround
+        result = handleFetchGet_(params);
+        break;
+
+      default:
+        result = { ok: false, error: "Invalid GET action. Valid: ping, login, fetch", status: 400 };
+    }
+
+    // JSONP support - wrap response in callback function
+    if (callback) {
+      return ContentService
+        .createTextOutput(callback + "(" + JSON.stringify(result) + ");")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+
+    return jsonResponse(result, result.status);
+  } catch (err) {
+    const errorResult = { ok: false, error: String(err), status: 500 };
+    if (callback) {
+      return ContentService
+        .createTextOutput(callback + "(" + JSON.stringify(errorResult) + ");")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return jsonResponse(errorResult, 500);
+  }
+}
+
+/**
+ * Handle login via GET parameters (CORS workaround)
+ * GET ?action=login&email=x&password=y
+ */
+function handleLoginGet_(params) {
+  const body = {
+    email: params.email || "",
+    password: params.password || ""
+  };
+  // Reuse POST handler logic
+  return handleLogin_(body, true); // true = return object instead of ContentService
+}
+
+/**
+ * Handle fetch via GET parameters (CORS workaround)
+ * GET ?action=fetch&token=x&type=calc&limit=50
+ */
+function handleFetchGet_(params) {
+  const body = {
+    token: params.token || "",
+    type: params.type || "all",
+    limit: params.limit || 100
+  };
+  return handleFetch_(body, true); // true = return object instead of ContentService
+}
+
+function doPost(e) {
+  try {
+    const body = parseJsonBody_(e);
+    const action = body.action;
+    const callback = body.callback || null; // JSONP support for POST too
+
+    if (!action) {
+      const err = { ok: false, error: "Missing action", status: 400 };
+      return callback ? jsonpResponse(callback, err) : jsonResponse(err, 400);
+    }
+
+    let result;
+    switch (action) {
+      case "login":
+        result = handleLogin_(body, true);
+        break;
+
+      case "save":
+        result = handleSave_(body, true);
+        break;
+
+      case "fetch":
+        result = handleFetch_(body, true);
+        break;
+
+      case "register":
+        result = handleRegister_(body, true);
+        break;
+
+      case "delete":
+        result = handleDelete_(body, true);
+        break;
+
+      default:
+        result = { ok: false, error: "Invalid action", status: 400 };
+    }
+
+    return callback ? jsonpResponse(callback, result) : jsonResponse(result, result.status);
+  } catch (err) {
+    // Log server-side only
+    safeAudit_("ERROR", { message: String(err), stack: (err && err.stack) ? err.stack : "" });
+    const errResult = { ok: false, error: "Server error", status: 500 };
+    return jsonResponse(errResult, 500);
+  }
+}
+
+/**
+ * JSONP response helper
+ */
+function jsonpResponse(callback, obj) {
+  return ContentService
+    .createTextOutput(callback + "(" + JSON.stringify(obj) + ");")
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+/** ====== LOGIN ====== **/
+function handleLogin_(body, returnObject) {
+  const email = String(body.email || "").trim().toLowerCase();
+  const password = String(body.password || "");
+
+  // Helper to return result based on returnObject flag
+  const respond = (obj, status) => {
+    obj.status = status || 200;
+    return returnObject ? obj : jsonResponse(obj, status);
+  };
+
+  if (!email || !password) {
+    return respond({ ok: false, error: "Email and password required" }, 400);
+  }
+
+  const ss = getSpreadsheet_();
+  const usersSheet = ss.getSheetByName(CONFIG.SHEETS.USERS);
+  if (!usersSheet) return respond({ ok: false, error: "Missing users sheet" }, 500);
+
+  const { headerMap, rows } = readSheetAsObjects_(usersSheet);
+  // Expected columns: user_id, email, password_hash, role, active, created_at
+  const user = rows.find(r => String(r.email || "").trim().toLowerCase() === email);
+
+  if (!user) {
+    safeAudit_("LOGIN_FAIL", { email, reason: "no_user" });
+    return respond({ ok: false, error: "Invalid credentials" }, 401);
+  }
+
+  const active = String(user.active || "").toLowerCase();
+  if (active === "false" || active === "0" || active === "no") {
+    safeAudit_("LOGIN_FAIL", { email, reason: "inactive" });
+    return respond({ ok: false, error: "Account disabled" }, 403);
+  }
+
+  const passwordHash = sha256Base64_(password);
+  if (String(user.password_hash || "") !== passwordHash) {
+    safeAudit_("LOGIN_FAIL", { email, reason: "bad_password" });
+    return respond({ ok: false, error: "Invalid credentials" }, 401);
+  }
+
+  const userId = String(user.user_id || "").trim() || Utilities.getUuid();
+  const role = String(user.role || "user").trim() || "user";
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + CONFIG.TOKEN_TTL_SECONDS;
+
+  const token = signToken_({
+    user_id: userId,
+    email,
+    role,
+    iat: now,
+    exp
+  });
+
+  safeAudit_("LOGIN_OK", { email, user_id: userId, role });
+
+  return respond({
+    ok: true,
+    auth: { user_id: userId, email, role, token, exp }
+  });
+}
+
+/** ====== REGISTER NEW USER ====== **/
+function handleRegister_(body, returnObject) {
+  const email = String(body.email || "").trim().toLowerCase();
+  const password = String(body.password || "");
+  const confirmPassword = String(body.confirmPassword || "");
+
+  // Helper to return result based on returnObject flag
+  const respond = (obj, status) => {
+    obj.status = status || 200;
+    return returnObject ? obj : jsonResponse(obj, status);
+  };
+
+  // Validate email
+  if (!email) {
+    return respond({ ok: false, error: "Email is required" }, 400);
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return respond({ ok: false, error: "Invalid email format" }, 400);
+  }
+
+  // Validate password
+  if (!password) {
+    return respond({ ok: false, error: "Password is required" }, 400);
+  }
+  if (password.length < 6) {
+    return respond({ ok: false, error: "Password must be at least 6 characters" }, 400);
+  }
+
+  // Validate password confirmation
+  if (password !== confirmPassword) {
+    return respond({ ok: false, error: "Passwords do not match" }, 400);
+  }
+
+  const ss = getSpreadsheet_();
+  const usersSheet = ss.getSheetByName(CONFIG.SHEETS.USERS);
+  if (!usersSheet) return respond({ ok: false, error: "Missing users sheet" }, 500);
+
+  // Check if email already exists
+  const { rows } = readSheetAsObjects_(usersSheet);
+  const existingUser = rows.find(r => String(r.email || "").trim().toLowerCase() === email);
+
+  if (existingUser) {
+    safeAudit_("REGISTER_FAIL", { email, reason: "duplicate_email" });
+    return respond({ ok: false, error: "An account with this email already exists" }, 409);
+  }
+
+  // Create new user
+  const userId = Utilities.getUuid();
+  const passwordHash = sha256Base64_(password);
+  const role = "user";
+  const createdAt = new Date().toISOString();
+
+  try {
+    appendObjectToSheet_(usersSheet, {
+      user_id: userId,
+      email: email,
+      password_hash: passwordHash,
+      role: role,
+      active: true,
+      created_at: createdAt
+    });
+  } catch (err) {
+    safeAudit_("REGISTER_FAIL", { email, reason: "sheet_error", error: String(err) });
+    return respond({ ok: false, error: "Failed to create account. Please try again." }, 500);
+  }
+
+  // Generate token for immediate login after registration
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + CONFIG.TOKEN_TTL_SECONDS;
+
+  const token = signToken_({
+    user_id: userId,
+    email,
+    role,
+    iat: now,
+    exp
+  });
+
+  safeAudit_("REGISTER_OK", { email, user_id: userId });
+
+  return respond({
+    ok: true,
+    message: "Account created successfully",
+    auth: { user_id: userId, email, role, token, exp }
+  });
+}
+
+/** ====== SAVE RECORDS ====== **/
+function handleSave_(body, returnObject) {
+  const token = String(body.token || "");
+  const type = String(body.type || "").trim().toLowerCase();
+  const record = body.record || null;
+
+  // Helper to return result based on returnObject flag
+  const respond = (obj, status) => {
+    obj.status = status || 200;
+    return returnObject ? obj : jsonResponse(obj, status);
+  };
+
+  if (!token) return respond({ ok: false, error: "Missing token" }, 401);
+  if (!record) return respond({ ok: false, error: "Missing record" }, 400);
+  if (!["calc", "split", "reserve"].includes(type)) {
+    return respond({ ok: false, error: "Invalid record type" }, 400);
+  }
+
+  const auth = verifyToken_(token);
+  if (!auth.ok) return respond({ ok: false, error: auth.error }, 401);
+
+  const ss = getSpreadsheet_();
+  const sheetName =
+    type === "calc" ? CONFIG.SHEETS.CALC :
+    type === "split" ? CONFIG.SHEETS.SPLIT :
+    CONFIG.SHEETS.RESERVE;
+
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return respond({ ok: false, error: `Missing sheet: ${sheetName}` }, 500);
+
+  // Ensure required metadata exists
+  const rowObj = Object.assign({}, record, {
+    record_id: Utilities.getUuid(),
+    user_id: auth.payload.user_id,
+    timestamp: record.timestamp || new Date().toISOString(),
+    source: record.source || "sync"
+  });
+
+  // Append row by header order
+  appendObjectToSheet_(sheet, rowObj);
+
+  safeAudit_("SAVE_OK", { type, user_id: auth.payload.user_id });
+
+  return respond({ ok: true });
+}
+
+/** ====== FETCH RECORDS ====== **/
+function handleFetch_(body, returnObject) {
+  const token = String(body.token || "");
+  const type = String(body.type || "all").trim().toLowerCase();
+  const limit = clampInt_(body.limit, 1, 500, 100);
+
+  // Helper to return result based on returnObject flag
+  const respond = (obj, status) => {
+    obj.status = status || 200;
+    return returnObject ? obj : jsonResponse(obj, status);
+  };
+
+  if (!token) return respond({ ok: false, error: "Missing token" }, 401);
+
+  const auth = verifyToken_(token);
+  if (!auth.ok) return respond({ ok: false, error: auth.error }, 401);
+
+  const ss = getSpreadsheet_();
+  const userId = auth.payload.user_id;
+
+  const typesToFetch = (type === "all")
+    ? ["calc", "split", "reserve"]
+    : [type];
+
+  const result = {};
+
+  typesToFetch.forEach(t => {
+    if (!["calc", "split", "reserve"].includes(t)) return;
+
+    const sheetName =
+      t === "calc" ? CONFIG.SHEETS.CALC :
+      t === "split" ? CONFIG.SHEETS.SPLIT :
+      CONFIG.SHEETS.RESERVE;
+
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      result[t] = { ok: false, error: `Missing sheet: ${sheetName}`, records: [] };
+      return;
+    }
+
+    const { rows } = readSheetAsObjects_(sheet);
+    // Filter by user_id
+    const mine = rows
+      .filter(r => String(r.user_id || "") === userId)
+      // Newest first if timestamp exists
+      .sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")))
+      .slice(0, limit);
+
+    result[t] = { ok: true, records: mine };
+  });
+
+  safeAudit_("FETCH_OK", { type, user_id: userId, limit });
+
+  return respond({ ok: true, data: result });
+}
+
+/** ====== DELETE RECORDS ====== **/
+function handleDelete_(body, returnObject) {
+  const token = String(body.token || "");
+  const type = String(body.type || "").trim().toLowerCase();
+  const recordId = String(body.record_id || "").trim();
+
+  // Helper to return result based on returnObject flag
+  const respond = (obj, status) => {
+    obj.status = status || 200;
+    return returnObject ? obj : jsonResponse(obj, status);
+  };
+
+  if (!token) return respond({ ok: false, error: "Missing token" }, 401);
+  if (!recordId) return respond({ ok: false, error: "Missing record_id" }, 400);
+  if (!["calc", "split", "reserve"].includes(type)) {
+    return respond({ ok: false, error: "Invalid record type" }, 400);
+  }
+
+  const auth = verifyToken_(token);
+  if (!auth.ok) return respond({ ok: false, error: auth.error }, 401);
+
+  const ss = getSpreadsheet_();
+  const sheetName =
+    type === "calc" ? CONFIG.SHEETS.CALC :
+    type === "split" ? CONFIG.SHEETS.SPLIT :
+    CONFIG.SHEETS.RESERVE;
+
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return respond({ ok: false, error: `Missing sheet: ${sheetName}` }, 500);
+
+  const userId = auth.payload.user_id;
+
+  // Find the row to delete
+  const { headerMap, rows } = readSheetAsObjects_(sheet);
+  const recordIdColIndex = headerMap["record_id"];
+
+  if (recordIdColIndex === undefined) {
+    return respond({ ok: false, error: "Sheet missing record_id column" }, 500);
+  }
+
+  // Find the row index (1-indexed, add 2 for header row and 0-index offset)
+  let rowToDelete = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row.record_id || "") === recordId) {
+      // Verify ownership - user can only delete their own records
+      if (String(row.user_id || "") !== userId) {
+        safeAudit_("DELETE_FAIL", { record_id: recordId, user_id: userId, reason: "unauthorized" });
+        return respond({ ok: false, error: "Unauthorized to delete this record" }, 403);
+      }
+      rowToDelete = i + 2; // +2 for header row (1) and 0-index offset (1)
+      break;
+    }
+  }
+
+  if (rowToDelete === -1) {
+    return respond({ ok: false, error: "Record not found" }, 404);
+  }
+
+  // Delete the row
+  try {
+    sheet.deleteRow(rowToDelete);
+    safeAudit_("DELETE_OK", { type, record_id: recordId, user_id: userId });
+    return respond({ ok: true, message: "Record deleted successfully" });
+  } catch (err) {
+    safeAudit_("DELETE_FAIL", { record_id: recordId, user_id: userId, error: String(err) });
+    return respond({ ok: false, error: "Failed to delete record" }, 500);
+  }
+}
+
+/** ====== HELPERS: SHEET IO ====== **/
+function getSpreadsheet_() {
+  if (CONFIG.SHEET_ID && String(CONFIG.SHEET_ID).trim()) {
+    return SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  }
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function readSheetAsObjects_(sheet) {
+  const values = sheet.getDataRange().getValues();
+  if (!values || values.length < 1) return { headerMap: {}, rows: [] };
+
+  const headers = values[0].map(h => String(h).trim());
+  const headerMap = {};
+  headers.forEach((h, i) => { headerMap[h] = i; });
+
+  const rows = [];
+  for (let r = 1; r < values.length; r++) {
+    const row = values[r];
+    if (row.join("").trim() === "") continue;
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i]; });
+    rows.push(obj);
+  }
+  return { headerMap, rows };
+}
+
+/**
+ * Appends an object to a sheet using the sheet's header row.
+ * Any missing fields become blank. Extra fields are ignored unless the header includes them.
+ */
+function appendObjectToSheet_(sheet, obj) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+    .map(h => String(h).trim());
+
+  // If sheet has no headers, fail loudly
+  if (!headers.length || !headers[0]) {
+    throw new Error(`Sheet "${sheet.getName()}" must have a header row (row 1).`);
+  }
+
+  const row = headers.map(h => (obj[h] !== undefined ? obj[h] : ""));
+  sheet.appendRow(row);
+}
+
+/** ====== HELPERS: TOKEN (HMAC SIGNED) ====== **/
+function signToken_(payload) {
+  const header = { alg: "HS256", typ: "JWT-LITE" };
+  const headerB64 = base64Url_(JSON.stringify(header));
+  const payloadB64 = base64Url_(JSON.stringify(payload));
+  const data = `${headerB64}.${payloadB64}`;
+  const sig = hmacSha256Base64Url_(data, CONFIG.TOKEN_SECRET);
+  return `${data}.${sig}`;
+}
+
+function verifyToken_(token) {
+  try {
+    const parts = String(token).split(".");
+    if (parts.length !== 3) return { ok: false, error: "Bad token format" };
+
+    const [hB64, pB64, sig] = parts;
+    const data = `${hB64}.${pB64}`;
+    const expectedSig = hmacSha256Base64Url_(data, CONFIG.TOKEN_SECRET);
+    if (sig !== expectedSig) return { ok: false, error: "Invalid token signature" };
+
+    const payloadJson = Utilities.newBlob(Utilities.base64DecodeWebSafe(pB64)).getDataAsString();
+    const payload = JSON.parse(payloadJson);
+
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && now > payload.exp) return { ok: false, error: "Token expired" };
+
+    return { ok: true, payload };
+  } catch (err) {
+    return { ok: false, error: "Token verify failed" };
+  }
+}
+
+/** ====== HELPERS: HASHING / BASE64URL ====== **/
+function sha256Base64_(text) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8);
+  return Utilities.base64Encode(bytes);
+}
+
+function hmacSha256Base64Url_(data, secret) {
+  const sigBytes = Utilities.computeHmacSha256Signature(data, secret, Utilities.Charset.UTF_8);
+  return Utilities.base64EncodeWebSafe(sigBytes).replace(/=+$/g, "");
+}
+
+function base64Url_(str) {
+  return Utilities.base64EncodeWebSafe(str, Utilities.Charset.UTF_8).replace(/=+$/g, "");
+}
+
+/** ====== HELPERS: REQUEST / RESPONSE ====== **/
+function parseJsonBody_(e) {
+  if (!e || !e.postData || !e.postData.contents) return {};
+  return JSON.parse(e.postData.contents);
+}
+
+/**
+ * Returns a JSON response
+ * Note: Apps Script doesn't support setHeader() on ContentService
+ * CORS is handled automatically when deployed as Web App with "Anyone with the link" access
+ */
+function jsonResponse(obj, httpStatus) {
+  const payload = Object.assign({}, obj, { status: httpStatus || 200 });
+
+  return ContentService
+    .createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function clampInt_(val, min, max, def) {
+  const n = parseInt(val, 10);
+  if (isNaN(n)) return def;
+  return Math.max(min, Math.min(max, n));
+}
+
+/** ====== AUDIT LOG (OPTIONAL) ====== **/
+function safeAudit_(eventType, data) {
+  try {
+    const ss = getSpreadsheet_();
+    const sheet = ss.getSheetByName(CONFIG.SHEETS.AUDIT);
+    if (!sheet) return; // optional
+    const row = [
+      new Date().toISOString(),
+      String(eventType || ""),
+      JSON.stringify(data || {})
+    ];
+    sheet.appendRow(row);
+  } catch (e) {
+    // Never block main flow due to audit failures
+  }
+}
+
+/** ====== ADMIN: CREATE USER (RUN MANUALLY IN SCRIPT EDITOR) ====== **/
+function adminCreateUser(email, password, role) {
+  const ss = getSpreadsheet_();
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.USERS);
+  if (!sheet) throw new Error("Missing users sheet");
+
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  if (!cleanEmail) throw new Error("Email required");
+
+  const userId = Utilities.getUuid();
+  const hash = sha256Base64_(String(password || ""));
+  const userRole = String(role || "user");
+
+  // Ensure users sheet has headers matching:
+  // user_id, email, password_hash, role, active, created_at
+  appendObjectToSheet_(sheet, {
+    user_id: userId,
+    email: cleanEmail,
+    password_hash: hash,
+    role: userRole,
+    active: true,
+    created_at: new Date().toISOString()
+  });
+
+  return { user_id: userId, email: cleanEmail, role: userRole };
+}
+
+function createTestUser() {
+  const result = adminCreateUser("test@example.com", "123456", "user");
+  Logger.log(result);
+}
+
+function createAnotherUser() {
+  const result = adminCreateUser("driver@company.com", "password123", "user");
+  Logger.log(result);
+}
+
+// Required Sheet Headers (Row 1)
+
+// Make sure each sheet has headers in row 1 (exact spelling matters).
+
+// users
+// user_id | email | password_hash | role | active | created_at
+
+// calc_records
+
+// Example minimal headers (add more columns if you want):
+
+// record_id | user_id | timestamp | tank_type | full_inches | start_inches | end_inches | capacity | capacity_unit | gas | flow_value | timer_elapsed | result_text | source
+
+// split_records
+// record_id | user_id | timestamp | source_tank | destination | amount_scf | gas | notes | result_text | source
+
+// reserve_records
+// record_id | user_id | timestamp | reserve_amount | gas | remaining | warning_flag | result_text | source
+
+// audit_log (optional)
+// timestamp | event_type | data_json
+
+// ============================================================
+// DEPLOYMENT STEPS
+// ============================================================
+
+// 1. Open Google Sheet → Extensions → Apps Script
+
+// 2. Paste this code into Code.gs (replace all existing content)
+
+// 3. Update CONFIG at the top:
+//    - TOKEN_SECRET: Change to a long random string (REQUIRED)
+//    - SHEET_ID: Leave blank if script is bound to the sheet
+
+// 4. Click Deploy → New deployment
+
+// 5. Select "Web app" and configure:
+//    - Description: "Cryo Calculator API"
+//    - Execute as: Me
+//    - Who has access: Anyone
+//      ⚠️  MUST be "Anyone" (not "Anyone with the link") for CORS!
+
+// 6. Click "Deploy" and authorize when prompted
+
+// 7. Copy the Web App URL (ends with /exec)
+
+// 8. Update API_ENDPOINT in frontend files:
+//    - index.html, calculator.html, records.html, constant.js
+
+// ============================================================
+// CORS TROUBLESHOOTING
+// ============================================================
+
+// Google Apps Script does NOT support custom headers (Access-Control-Allow-Origin).
+// CORS works automatically ONLY when deployed with "Anyone" access.
+
+// If you STILL get CORS errors after deploying with "Anyone":
+
+// SOLUTION 1: Use GET requests instead of POST (no preflight)
+//   Frontend should use:
+//   fetch(API_ENDPOINT + "?action=login&email=x&password=y")
+//   instead of POST with JSON body
+
+// SOLUTION 2: Use JSONP (works from any origin)
+//   Add &callback=handleResponse to any request:
+//   GET ?action=ping&callback=handleResponse
+//   Returns: handleResponse({"ok":true,...});
+//
+//   Frontend code:
+//   function handleResponse(data) { console.log(data); }
+//   const script = document.createElement('script');
+//   script.src = API_ENDPOINT + '?action=ping&callback=handleResponse';
+//   document.body.appendChild(script);
+
+// SOLUTION 3: Use a CORS proxy (for development only)
+//   fetch('https://cors-anywhere.herokuapp.com/' + API_ENDPOINT, {...})
+
+// ============================================================
+// TESTING THE API
+// ============================================================
+
+// Test ping (browser or curl):
+//   GET https://script.google.com/.../exec?action=ping
+//   → {"ok":true,"service":"cryo-sheets-api","time":"..."}
+
+// Test login via GET:
+//   GET ?action=login&email=test@example.com&password=123456
+//   → {"ok":true,"auth":{...}}
+
+// Test with JSONP:
+//   GET ?action=ping&callback=myFunc
+//   → myFunc({"ok":true,...});
+
+// ============================================================
+// UPDATING THE DEPLOYMENT
+// ============================================================
+
+// After changing the code:
+// 1. Deploy → Manage deployments
+// 2. Click pencil icon (edit)
+// 3. Version → "New version"
+// 4. Click "Deploy"
+// The URL stays the same.
+//
+

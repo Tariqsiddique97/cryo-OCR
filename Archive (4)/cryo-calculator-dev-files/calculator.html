@@ -1,0 +1,3316 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cryo Tank Calculator + SCF Split (Swipe)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        -webkit-text-size-adjust: 100%;
+        background: Canvas;
+        color: CanvasText;
+      }
+
+      /* Swipe container */
+      .viewport {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+      }
+      .panes {
+        display: flex;
+        width: 300vw;
+        height: 100%;
+        transform: translateX(0);
+        transition: transform 0.25s ease-out;
+      }
+      .panes[data-index="1"] {
+        transform: translateX(-100vw);
+      }
+      .panes[data-index="2"] {
+        transform: translateX(-200vw);
+      }
+      .pane {
+        width: 100vw;
+        height: 100%;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Enough bottom space so last inputs/buttons aren't cut off */
+      .pane .page {
+        padding-bottom: calc(env(safe-area-inset-bottom) + 140px);
+      }
+      @supports (height: 100dvh) {
+        .viewport {
+          height: 100dvh;
+        }
+      }
+
+      /* Page padding */
+      .page {
+        padding: calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 20px);
+        max-width: 720px;
+        margin: 0 auto;
+      }
+
+      /* HUD hint */
+      .hint {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        text-align: center;
+        color: #667085;
+        font-size: 12px;
+        opacity: 0.9;
+        pointer-events: none;
+        z-index: 10;
+      }
+      .dots {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        margin-left: 8px;
+      }
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #cbd5e1;
+        display: inline-block;
+      }
+      .dot.active {
+        background: #22c55e;
+      }
+      .swipe {
+        display: inline-block;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        padding: 4px 8px;
+      }
+
+      /* Base UI */
+      h1 {
+        margin: 0 0 6px;
+        font-weight: 700;
+        font-size: 22px;
+      }
+      h2 {
+        margin-top: 20px;
+        font-size: 18px;
+      }
+      label {
+        display: block;
+        margin-top: 10px;
+      }
+      input,
+      select,
+      button {
+        font-size: 16px;
+        padding: 10px 12px;
+        width: 100%;
+        margin-top: 6px;
+        box-sizing: border-box;
+        border-radius: 10px;
+        border: 1px solid #c9c9c9;
+        background: Field;
+        color: FieldText;
+        -webkit-appearance: none;
+        font-family: inherit;
+      }
+      input::placeholder {
+        color: #999;
+      }
+
+      /* Buttons (blue theme) */
+      button {
+        cursor: pointer;
+        border: none;
+        background: #1a73e8;
+        color: #fff;
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+        transition: filter 0.15s ease;
+        width: auto;
+        padding: 10px 14px;
+        border-radius: 10px;
+      }
+      .btn-primary {
+        background: #1a73e8 !important;
+        color: #fff;
+      }
+      .btn-danger {
+        background: rgb(219, 84, 84) !important;
+        color: #fff;
+      }
+      button:disabled {
+        opacity: 0.6;
+      }
+      button:active {
+        filter: brightness(0.95);
+      }
+      .btn-clear {
+        background: #eee;
+        color: #111;
+        border: 1px solid #ccc;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: #1a73e8;
+        border: 1px solid #cbd5e1;
+      }
+
+      .row2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .muted {
+        color: #666;
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .box {
+        background: #f7f7f8;
+        border-radius: 12px;
+        padding: 12px;
+        margin-top: 12px;
+      }
+      .inline {
+        display: inline-block;
+        min-width: 140px;
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .result {
+        margin-top: 16px;
+        padding: 12px;
+        background: #0000;
+        border-radius: 10px;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+
+      /* Flow Unit Toggle */
+      .toggle-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+      }
+      .switch {
+        position: relative;
+        width: 68px;
+        height: 32px;
+        background: #e6e6e6;
+        border-radius: 999px;
+        border: 1px solid #ccc;
+        display: inline-block;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .switch input {
+        display: none;
+      }
+      .knob {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+        transition: left 0.18s ease;
+      }
+      .switch.on {
+        background: #cfe1ff;
+        border-color: #9ec2ff;
+      }
+      .switch.on .knob {
+        left: 38px;
+      }
+      .unit-legend {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 11px;
+        color: #333;
+        pointer-events: none;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 8px;
+      }
+      .unit-legend span {
+        opacity: 0.7;
+      }
+      .switch.on .unit-legend .lb {
+        font-weight: 700;
+        opacity: 1;
+      }
+      .switch:not(.on) .unit-legend .gal {
+        font-weight: 700;
+        opacity: 1;
+      }
+
+      /* Split/Reserve page tweaks */
+      .split h1 {
+        margin: 0 0 12px;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .split .btn {
+        width: auto;
+      }
+
+      /* Split/Reserve smaller fonts per client request */
+      #pane-split .muted,
+      #pane-reserve .muted {
+        font-size: 11px;
+        margin-top: 3px;
+      }
+      #pane-split .muted b,
+      #pane-reserve .muted b {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      /* Tank section styling - no box, just spacing */
+      .tank-section {
+        margin-top: 20px;
+      }
+      .tank-header {
+        font-size: 14px;
+        font-weight: 700;
+        display: block;
+        margin-bottom: 8px;
+      }
+      .tank-section .row2 {
+        margin-bottom: 8px;
+      }
+      #pane-split .row2,
+      #pane-reserve .row2 {
+        gap: 10px;
+        margin-top: 8px;
+      }
+      /* Split/Reserve button layout - match Tank calculator */
+      #pane-split .sticky-actions,
+      #pane-reserve .sticky-actions {
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      #pane-split .sticky-actions button,
+      #pane-reserve .sticky-actions button {
+        flex: 0 0 auto;
+        width: auto;
+      }
+      .err {
+        margin-top: 8px;
+        color: #b42318;
+        background: #ffefef;
+        border: 1px solid #f3b3b0;
+        padding: 10px;
+        border-radius: 10px;
+        display: none;
+      }
+
+      /* Dynamic compact mode for short screens */
+      .compact .page {
+        padding: 12px 14px 14px;
+      }
+      .compact label {
+        margin-top: 3px;
+      }
+      .compact input,
+      .compact select,
+      .compact button {
+        margin-top: 2px;
+        padding: 8px 10px;
+        font-size: 15px;
+      }
+      .compact .row2 {
+        gap: 6px;
+      }
+      .compact .box {
+        padding: 8px;
+        margin-top: 8px;
+      }
+      .compact .result {
+        margin-top: 10px;
+        padding: 10px;
+      }
+      .compact .actions {
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .compact h1,
+      .compact .split h1 {
+        margin-bottom: 4px;
+        font-size: 20px;
+      }
+      .compact .btn {
+        padding: 10px 12px;
+      }
+
+      /* Sticky action bars on Split/Reserve pages */
+      #pane-split #calcSplit {
+        position: sticky;
+        bottom: calc(env(safe-area-inset-bottom) + 8px);
+        /* width: 100%; */
+        z-index: 9;
+      }
+      .sticky-actions {
+        position: sticky;
+        bottom: calc(env(safe-area-inset-bottom) + 8px);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        background: Canvas;
+        padding-top: 10px;
+        z-index: 9;
+      }
+
+      /* Modal */
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .modal.open {
+        display: flex;
+      }
+      .modal-card {
+        width: min(560px, 94vw);
+        background: Canvas;
+        color: CanvasText;
+        border-radius: 16px;
+        padding: 16px 16px 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+      .modal h3 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+      .modal .steps {
+        font-size: 14px;
+        color: #555;
+        margin: 8px 0 10px;
+      }
+      .modal .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .modal .badge {
+        display: inline-block;
+        background: #eef2ff;
+        color: #1a73e8;
+        border: 1px solid #c7d2fe;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+      }
+      .modal .muted {
+        color: #666;
+        margin-top: 4px;
+      }
+      .modal .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        justify-content: flex-end;
+      }
+      .pill {
+        border-radius: 999px;
+      }
+      .dotA,
+      .dotB,
+      .dotC {
+        color: #dc2626;
+        font-weight: 700;
+      }
+
+      /* --- NEW: Photo Measure + tabs --- */
+      .tabbar {
+        display: flex;
+        gap: 8px;
+        margin: 6px 0 10px;
+      }
+      .tabbtn {
+        padding: 6px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #0f172a;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .tabbtn.active {
+        background: #1a73e8;
+        color: #fff;
+        border-color: #99b6f9;
+      }
+      .pm-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      .pm-canvas-wrap {
+        background: #0a0a0a;
+        border-radius: 12px;
+        padding: 8px;
+      }
+      #pmCanvas {
+        display: block;
+        max-width: 100%;
+        border-radius: 8px;
+        background: #111;
+      }
+      .pm-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .pm-muted {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+      }
+
+      /* Ensure consistent field sizing for all panes */
+      #pane-calc input[type="number"],
+      #pane-calc input[type="text"],
+      #pane-calc select,
+      #pane-split input[type="number"],
+      #pane-split input[type="text"],
+      #pane-split select,
+      #pane-reserve input[type="number"],
+      #pane-reserve input[type="text"],
+      #pane-reserve select {
+        font-size: 16px;
+        padding: 10px 12px;
+      }
+
+      /* Compact mode for Calculator pane */
+      .compact #pane-calc input[type="number"],
+      .compact #pane-calc input[type="text"],
+      .compact #pane-calc select {
+        font-size: 15px;
+        padding: 8px 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="viewport" id="viewport">
+      <div class="panes" id="panes" data-index="0">
+        <!-- === PAGE: CALCULATOR START === -->
+        <section class="pane" id="pane-calc">
+          <div class="page">
+            <h1>Cryo Tank Calculator</h1>
+            <div class="muted">
+              Tip: For laydown tanks,
+              <b>Full Inches</b>
+              means the Full Trycock inches when the tank is at “full.”
+              <br />
+              <b>Horizontal Measure</b>
+              captures cylinder
+              <i>diameter</i>
+              and
+              <i>length</i>
+              only — it does
+              <b>not</b>
+              measure Full Trycock height.
+            </div>
+
+            <label>
+              Tank Type:
+              <select id="tankType">
+                <option value="vertical" selected>Vertical Tank</option>
+                <option value="laydown">Laydown (Horizontal Tank)</option>
+              </select>
+            </label>
+
+            <label>
+              Full Inches (Full Trycock at “full”):
+              <div style="display: flex; gap: 8px; align-items: center">
+                <input id="fullInches" type="number" placeholder="0" />
+                <!-- keep the same id so existing modal script still works -->
+                <button id="btnMeasure" type="button" class="btn-ghost">Horizontal Measure</button>
+              </div>
+              <div class="muted">
+                Use
+                <b>Horizontal Measure</b>
+                to capture cylinder size from a photo/live view. This will
+                <b>not</b>
+                overwrite Full Trycock inches.
+              </div>
+            </label>
+
+            <!-- Geometry fields (hidden until Laydown selected) -->
+            <div id="geoFields" hidden>
+              <div class="row2">
+                <label>
+                  Tank Diameter (in)
+                  <input id="geoDiameter" type="number" placeholder="e.g., 72" disabled />
+                  <div class="muted">Enter manually or auto-filled from Horizontal Measure. Used for laydown geometry.</div>
+                </label>
+                <label>
+                  Tank Length (in)
+                  <input id="geoLength" type="number" placeholder="e.g., 300" disabled />
+                  <div class="muted">Enter manually or auto-filled from Horizontal Measure. Informational; SCF uses Full Capacity.</div>
+                </label>
+              </div>
+              <div id="diamHint" class="muted" hidden></div>
+            </div>
+
+            <label>
+              Full Capacity:
+              <div style="display: flex; gap: 6px">
+                <input id="fullCap" type="number" placeholder="0" />
+                <select id="capUnit">
+                  <option value="scf" selected>SCF</option>
+                  <option value="gal">Gallons</option>
+                </select>
+              </div>
+              <div class="muted">Enter the tank’s rated capacity at “full.”</div>
+            </label>
+
+            <label>
+              Select Gas:
+              <select id="gas">
+                <option value="LIN">LIN (Nitrogen)</option>
+                <option value="LOX">LOX (Oxygen)</option>
+                <option value="LAR">LAR (Argon)</option>
+              </select>
+            </label>
+
+            <div class="row2">
+              <div>
+                <label>
+                  Start Inches:
+                  <input id="startInches" type="number" placeholder="0" />
+                </label>
+              </div>
+              <div>
+                <label>
+                  End Inches:
+                  <input id="endInches" type="number" placeholder="0" />
+                </label>
+              </div>
+            </div>
+            <div class="muted">
+              Enter the change in Full Trycock inches (End − Start). Laydown inches are mapped via geometry using the cylinder diameter.
+            </div>
+
+            <!-- Timer + Flow -->
+            <label>
+              Timer (optional):
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px">
+                <button id="btnStart" type="button" class="btn-primary">Start Timer</button>
+                <button id="btnStop" type="button" class="btn-clear" disabled>Stop Timer</button>
+                <span class="inline mono" id="elapsed">Elapsed: 00:00:00</span>
+              </div>
+              <div class="muted">Use the timer and average flow to estimate transfer. You can also estimate the tank diameter from timer data.</div>
+            </label>
+
+            <div class="row2">
+              <div>
+                <label>
+                  Avg Flow
+                  <div class="toggle-wrap">
+                    <input type="number" inputmode="decimal" id="flowValue" placeholder="enter value" style="flex: 1" />
+                    <div id="unitSwitch" class="switch" role="switch" aria-checked="false" tabindex="0" title="Toggle gallons ↔ pounds per minute">
+                      <div class="unit-legend">
+                        <span class="gal">gal</span>
+                        <span class="lb">lb</span>
+                      </div>
+                      <div class="knob"></div>
+                    </div>
+                  </div>
+                  <div class="muted">Toggle left = Gallons/min (default), right = Pounds/min.</div>
+                </label>
+              </div>
+              <div style="display: flex; align-items: end; gap: 12px; flex-wrap: wrap">
+                <label style="display: flex; gap: 8px; align-items: center">
+                  <input type="checkbox" id="chkEstimateD" style="width: auto" />
+                  <span>Estimate diameter from timer</span>
+                </label>
+                <label style="display: flex; gap: 8px; align-items: center">
+                  <input type="checkbox" id="useTimerPrimary" style="width: auto" />
+                  <span>Use timer as primary (ignore inches for total)</span>
+                </label>
+              </div>
+            </div>
+            <div class="muted">
+              When "Use timer as primary" is on, total moved = (elapsed minutes × Flow) → converted to SCF by gas. Inches still show as a cross-check.
+            </div>
+
+            <div class="actions">
+              <button class="btn-primary" type="button" onclick="calculate()">Calculate</button>
+              <button class="btn-clear" type="button" onclick="clearForm()">Clear</button>
+              <button type="button" class="btn-ghost" onclick="saveCalculation()" id="btnSave">💾 Save</button>
+              <button type="button" class="btn-ghost" onclick="window.location.href='records.html?t=' + Date.now()" id="btnHistory">📋 Records</button>
+              <button type="button" class="btn-primary" onclick="window.goToSplit()">→ Split</button>
+              <button id="logoutCalc" class="btn-danger" type="button">Logout</button>
+            </div>
+
+            <div class="result" id="output">Enter values and tap Calculate.</div>
+          </div>
+        </section>
+        <!-- === PAGE: CALCULATOR END === -->
+
+<!-- === PAGE: SPLIT START === -->
+<section class="pane" id="pane-split">
+  <div class="page split">
+    <h1>Cryo Split Calculator</h1>
+
+    <!-- A) Text warning -->
+    <div class="box">
+      <div class="muted">
+        <b>Important:</b> Only use the Split Calculator when you have the
+        <b>Total SCF</b> for your truck and you are splitting that load between two tanks.
+        Fill in all required fields (marked with
+        <span style="color:#dc2626">*</span>) or the split will not be correct.
+      </div>
+    </div>
+
+    <!-- Inline error message (shown when something is missing) -->
+    <div id="splitErr" class="err" style="display:none;">
+      Enter Total SCF and valid Start/End inches for both tanks before calculating.
+    </div>
+
+    <!-- Total Amount + Type -->
+    <div class="row2" style="margin-top:16px;">
+      <div class="field">
+        <div class="muted required-label">Total Amount</div>
+        <input id="splitInput" type="number" placeholder="Enter Pounds or SCF" inputmode="numeric" />
+      </div>
+      <div class="field">
+        <div class="muted required-label">Input Type</div>
+        <select id="splitInputType">
+          <option value="POUNDS">Pounds (COA)</option>
+          <option value="SCF">SCF</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Gas + Update -->
+    <div class="row2" style="margin-top:8px;">
+      <div class="field">
+        <div class="muted">Gas Type</div>
+        <select id="splitGas">
+          <option value="LIN">LIN (Nitrogen)</option>
+          <option value="LOX">LOX (Oxygen)</option>
+          <option value="LAR">LAR (Argon)</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;">
+        <button id="splitUpdate" type="button" class="btn-primary">Update</button>
+      </div>
+    </div>
+
+    <div id="splitConverted" class="muted" style="margin-top:6px;"></div>
+
+    <!-- Final SCF value used for split -->
+    <div style="margin-top:16px;">
+      <div class="muted">Total SCF</div>
+      <input id="splitTotalSCF" type="text" placeholder="0" readonly />
+    </div>
+
+    <!-- Tank 1 -->
+    <div class="tank-section">
+      <span class="tank-header">Tank 1</span>
+
+      <div class="row2">
+        <div class="field">
+          <div class="muted">Full Trycock (in)</div>
+          <input id="t1Full" type="number" placeholder="0" />
+        </div>
+        <div class="field">
+          <div class="muted">Tank Capacity (gal)</div>
+          <input id="t1Gal" type="number" placeholder="0" />
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <div class="muted required-label">Start (in)</div>
+          <input id="t1Start" type="number" placeholder="0" />
+        </div>
+        <div class="field">
+          <div class="muted required-label">End (in)</div>
+          <input id="t1End" type="number" placeholder="0" />
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:6px;">
+        <div class="muted">Allocated SCF</div>
+        <input id="t1SCF" type="text" placeholder="0" readonly />
+      </div>
+    </div>
+
+    <!-- Tank 2 -->
+    <div class="tank-section">
+      <span class="tank-header">Tank 2</span>
+
+      <div class="row2">
+        <div class="field">
+          <div class="muted">Full Trycock (in)</div>
+          <input id="t2Full" type="number" placeholder="0" />
+        </div>
+        <div class="field">
+          <div class="muted">Tank Capacity (gal)</div>
+          <input id="t2Gal" type="number" placeholder="0" />
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <div class="muted required-label">Start (in)</div>
+          <input id="t2Start" type="number" placeholder="0" />
+        </div>
+        <div class="field">
+          <div class="muted required-label">End (in)</div>
+          <input id="t2End" type="number" placeholder="0" />
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:6px;">
+        <div class="muted">Allocated SCF</div>
+        <input id="t2SCF" type="text" placeholder="0" readonly />
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="sticky-actions">
+      <button id="splitCalc" class="btn-primary" type="button" disabled>Calculate</button>
+      <button id="splitClear" class="btn-clear" type="button">Clear</button>
+      <button type="button" class="btn-ghost" onclick="saveSplit()" id="btnSaveSplit">💾 Save</button>
+      <button type="button" class="btn-ghost" onclick="window.location.href='records.html?t=' + Date.now()" id="btnHistorySplit">📋 Records</button>
+      <button class="btn-ghost" type="button" onclick="window.goToReserve()">→ Reserve</button>
+      <button id="logoutSplit" class="btn-danger" type="button">Logout</button>
+    </div>
+  </div>
+</section>
+<!-- === PAGE: SPLIT END === -->
+
+<!-- === PAGE: RESERVE START === -->
+<section class="pane" id="pane-reserve">
+  <div class="page split">
+    <h1>Cryo Reserve Calculator</h1>
+
+    <!-- INPUT AMOUNT + TYPE -->
+    <div class="row2" style="margin-top:12px;">
+      <div>
+        <div class="muted">Amount</div>
+        <input id="resAmount" type="number" placeholder="Enter Pounds or SCF" inputmode="numeric" />
+      </div>
+
+      <div>
+        <div class="muted">Input Type</div>
+        <select id="resInputType">
+          <option value="POUNDS">Pounds (COA)</option>
+          <option value="SCF">SCF</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- GAS + UPDATE -->
+    <div class="row2" style="margin-top:10px;">
+      <div>
+        <div class="muted">Gas</div>
+        <select id="resGas">
+          <option value="LIN">LIN (Nitrogen)</option>
+          <option value="LOX">LOX (Oxygen)</option>
+          <option value="LAR">LAR (Argon)</option>
+        </select>
+      </div>
+
+      <div style="display:flex; align-items:flex-end;">
+        <button id="resUpdate" type="button" class="btn-primary">Update</button>
+      </div>
+    </div>
+
+    <div id="resHint" class="muted" style="margin-top:6px;"></div>
+
+    <!-- TANK INPUTS -->
+    <div style="margin-top:16px;">
+      <div class="muted"><b>Tank 1 SCF</b></div>
+      <input id="resT1" type="number" placeholder="0" />
+    </div>
+
+    <div style="margin-top:12px;">
+      <div class="muted"><b>Tank 2 SCF</b></div>
+      <input id="resT2" type="number" placeholder="0" />
+    </div>
+
+    <div style="margin-top:12px;">
+      <div class="muted"><b>Tank 3 SCF</b></div>
+      <input id="resT3" type="number" placeholder="0" />
+    </div>
+
+    <div style="margin-top:12px;">
+      <div class="muted"><b>Tank 4 SCF</b></div>
+      <input id="resT4" type="number" placeholder="0" />
+    </div>
+
+    <!-- REMAINING -->
+    <div style="margin-top:16px;">
+      <div class="muted"><b>Remaining SCF</b></div>
+      <input id="resRemaining" type="text" placeholder="0" readonly />
+    </div>
+
+    <div class="sticky-actions">
+      <button id="resClear" class="btn-primary" type="button">Clear</button>
+      <button type="button" class="btn-ghost" onclick="saveReserve()" id="btnSaveReserve">💾 Save</button>
+      <button type="button" class="btn-ghost" onclick="window.location.href='records.html?t=' + Date.now()" id="btnHistoryReserve">📋 Records</button>
+      <button class="btn-ghost" type="button" onclick="window.goToCalc()">← Home</button>
+      <button id="logout" class="btn-danger" type="button" >Logout</button>
+    </div>
+  </div>
+</section>
+<!-- === PAGE: RESERVE END === -->
+
+<!-- === RESERVE SCRIPT START === -->
+<script>
+(function () {
+
+  const gas = {
+    LIN: { scfPerLb: 13.8 },
+    LOX: { scfPerLb: 12.1 },
+    LAR: { scfPerLb: 9.57 }
+  };
+
+  const $ = sel => {
+    if (!sel) return null;
+    return document.getElementById(sel[0] === "#" ? sel.slice(1) : sel);
+  };
+  const num = v => Number(v) || 0;
+
+  let totalSCF = 0;
+
+  /* -------------------------------------------
+     UPDATE BUTTON → SCF stays the same / Pounds → SCF
+  -------------------------------------------- */
+  const updateBtn = $("#resUpdate");
+  if (updateBtn) {
+    updateBtn.addEventListener("click", () => {
+      const rawStr = ($("#resAmount").value || "").trim();
+      const type   = $("#resInputType").value;
+      const gasKey = $("#resGas").value;
+      const g      = gas[gasKey];
+
+      if (!rawStr) {
+        totalSCF = 0;
+        writeTotals();
+        return;
+      }
+
+      const amt = Number(rawStr);
+      if (!Number.isFinite(amt) || amt <= 0) {
+        totalSCF = 0;
+        writeTotals();
+        return;
+      }
+
+      if (type === "SCF") {
+        totalSCF = Math.min(999999, Math.round(amt));
+      } else {
+        if (!g) {
+          totalSCF = 0;
+          writeTotals();
+          return;
+        }
+        totalSCF = Math.min(999999, Math.round(amt * g.scfPerLb));
+      }
+
+      writeTotals();
+    });
+  }
+
+  /* -------------------------------------------
+     Write Totals (Hint + Remaining SCF)
+  -------------------------------------------- */
+  function writeTotals() {
+    const display = totalSCF > 0 ? totalSCF.toLocaleString() : "0";
+
+    $("#resRemaining").value = display;
+    $("#resHint").textContent = totalSCF > 0
+      ? `Total SCF available: ${display}`
+      : "";
+
+    recalcRemaining();
+  }
+
+  /* -------------------------------------------
+     Recalculate Remaining SCF
+  -------------------------------------------- */
+  function recalcRemaining() {
+    const used =
+      num($("#resT1").value) +
+      num($("#resT2").value) +
+      num($("#resT3").value) +
+      num($("#resT4").value);
+
+    const remain = Math.max(0, totalSCF - used);
+    $("#resRemaining").value = remain.toLocaleString();
+  }
+
+  ["resT1","resT2","resT3","resT4"].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener("input", recalcRemaining);
+  });
+
+  /* -------------------------------------------
+     CLEAR FIELDS (now fully working)
+  -------------------------------------------- */
+  const clearBtn = $("#resClear");
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      ["resAmount","resT1","resT2","resT3","resT4","resRemaining"]
+        .forEach(id => {
+          const el = $(id);
+          if (el) el.value = "";
+        });
+
+      $("#resHint").textContent = "";
+      totalSCF = 0;
+    });
+  }
+
+})();
+</script>
+<!-- === RESERVE SCRIPT END === -->
+
+
+      <div class="hint">
+        <span class="swipe">Swipe left/right</span>
+        <span class="dots">
+          <span class="dot active" id="d0"></span>
+          <span class="dot" id="d1"></span>
+          <span class="dot" id="d2"></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- === PAGE: MEASURE MODAL START === -->
+    <style>
+      /* Modal shell */
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1000;
+      }
+      .modal.open {
+        display: flex;
+      }
+      .hm-card {
+        width: min(640px, 96vw);
+        max-height: 92vh;
+        overflow: auto;
+        background: Canvas;
+        color: CanvasText;
+        border-radius: 16px;
+        padding: 14px 14px 10px;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+        /* Hide scrollbar but keep scroll functionality */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+      }
+      .hm-card::-webkit-scrollbar {
+        display: none; /* Chrome/Safari/Opera */
+      }
+      .hm-h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      /* Tabs + buttons */
+      .hm-tabs {
+        display: flex;
+        gap: 8px;
+        margin: 6px 0 8px;
+      }
+      .hm-tab {
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        background: #eef2ff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .hm-tab.active {
+        background: #1a73e8;
+        color: #fff;
+        border-color: #99b6f9;
+      }
+      .btn {
+        border: none;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 600;
+        background: #1a73e8;
+        color: #fff;
+        cursor: pointer;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: #1a73e8;
+        border: 1px solid #cbd5e1;
+      }
+      .btn-clear {
+        background: #f4f4f5;
+        color: #111;
+        border: 1px solid #d1d5db;
+      }
+
+      /* Live stage */
+      .hm-live {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 4/3;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #000;
+        overflow: hidden;
+      }
+      #hmVideo,
+      #hmCanvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+
+      .hm-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .hm-muted {
+        font-size: 12px;
+        color: #666;
+      }
+      .hm-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        border-top: 1px solid #e5e7eb;
+        margin-top: 12px;
+        padding-top: 10px;
+      }
+
+      /* Thumbnails */
+      .hm-thumbs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .hm-thumb {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #000;
+      }
+      .hm-thumb canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .hm-cap {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 6px;
+      }
+    </style>
+
+    <div id="measureModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="hmTitle">
+      <div class="hm-card">
+        <h3 id="hmTitle" class="hm-h1">Horizontal Tank Tool</h3>
+
+        <!-- Diameter / Length capture -->
+        <div class="hm-tabs">
+          <button id="hmTabD" class="hm-tab active" type="button">Diameter</button>
+          <button id="hmTabL" class="hm-tab" type="button">Length</button>
+          <span class="hm-muted" style="margin-left: auto">Tap–drag on the image to draw the red line.</span>
+        </div>
+
+        <!-- Live camera + overlay -->
+        <div class="hm-live">
+          <video id="hmVideo" playsinline></video>
+          <canvas id="hmCanvas"></canvas>
+        </div>
+
+        <!-- Controls row: Known length, Capture, Retake, Ruler, Full Measure -->
+        <div class="hm-row" style="gap: 8px; justify-content: space-around; align-items: center; margin-top: 8px; flex-wrap: wrap">
+          <span class="hm-muted" style="font-size: 11px">Known length (in)</span>
+          <input
+            id="hmRefIn"
+            type="number"
+            inputmode="decimal"
+            placeholder="12"
+            min="1"
+            style="width: 60px; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; background: Field; color: FieldText; text-align: center"
+          />
+          <button id="hmCapture" class="btn" type="button" style="padding: 8px 12px; font-size: 13px">📷 Capture</button>
+          <button id="hmRetake" class="btn-ghost" type="button" style="padding: 8px 12px; font-size: 13px">Retake</button>
+          <span style="width: 16px"></span>
+          <button
+            id="hmModeRuler"
+            type="button"
+            style="
+              width: 52px;
+              height: 52px;
+              border-radius: 50%;
+              border: 3px solid #22c55e;
+              background: #dcfce7;
+              color: #166534;
+              font-weight: 600;
+              font-size: 9px;
+              cursor: pointer;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 1px;
+            "
+          >
+            <span>Ruler</span>
+          </button>
+          <button
+            id="hmModeMeasure"
+            type="button"
+            style="
+              width: 52px;
+              height: 52px;
+              border-radius: 50%;
+              border: 3px solid #ef4444;
+              background: #fee2e2;
+              color: #991b1b;
+              font-weight: 600;
+              font-size: 9px;
+              cursor: pointer;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 1px;
+            "
+          >
+            <span>Full Measure</span>
+          </button>
+        </div>
+        <span id="hmNote" class="hm-muted">
+          Scroll to zoom, right-click drag to pan. Capture image, draw lines with Ruler and Measure buttons, then Apply.
+        </span>
+
+        <!-- Measurement Result Fields -->
+        <div class="hm-row" style="margin-top: 12px">
+          <div style="display: flex; gap: 12px; align-items: center; flex: 1">
+            <div style="flex: 1">
+              <label class="hm-muted" style="display: block; margin-bottom: 4px">Diameter (in)</label>
+              <input
+                id="hmCalculatedDiameter"
+                type="number"
+                inputmode="decimal"
+                readonly
+                placeholder="e.g. 120"
+                aria-readonly="true"
+                style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; color: #666"
+              />
+            </div>
+            <div style="flex: 1">
+              <label class="hm-muted" style="display: block; margin-bottom: 4px">Length (in)</label>
+              <input
+                id="hmCalculatedLength"
+                type="number"
+                inputmode="decimal"
+                readonly
+                placeholder="e.g. 1500"
+                aria-readonly="true"
+                style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; color: #666"
+              />
+            </div>
+          </div>
+          <button id="hmApply" class="btn" type="button" style="align-self: flex-end; padding: 10px 20px">Apply</button>
+        </div>
+
+        <!-- Thumbnails with measured result labels -->
+        <div class="hm-thumbs">
+          <div>
+            <div class="hm-cap">
+              <b>Diameter Image</b>
+              <span class="hm-muted" id="hmValD"></span>
+            </div>
+            <div class="hm-thumb"><canvas id="hmThumbD"></canvas></div>
+          </div>
+          <div>
+            <div class="hm-cap">
+              <b>Length Image</b>
+              <span class="hm-muted" id="hmValL"></span>
+            </div>
+            <div class="hm-thumb"><canvas id="hmThumbL"></canvas></div>
+          </div>
+        </div>
+
+        <div class="hm-actions">
+          <button id="hmClose" class="btn-ghost" type="button">Close</button>
+        </div>
+
+        <div class="hm-muted" style="margin-top: 6px">
+          Measurements are auto-populated on the Cryo Calculator page. Manual entry is still allowed.
+        </div>
+      </div>
+    </div>
+    <!-- === PAGE: MEASURE MODAL END === -->
+
+    <!-- === SCRIPTS: MEASURE MODAL START === -->
+    <script>
+      (function () {
+        // External fields to populate
+        const geoDiameter = document.getElementById("geoDiameter");
+        const geoLength = document.getElementById("geoLength");
+        const geoFields = document.getElementById("geoFields");
+        const showGeo = () => {
+          if (geoFields) geoFields.hidden = false;
+          if (geoDiameter) geoDiameter.disabled = false;
+          if (geoLength) geoLength.disabled = false;
+        };
+        const putVal = (el, v) => {
+          if (!el || !isFinite(v)) return;
+          el.value = Math.round(v);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        };
+
+        // Modal + UI
+        const modal = document.getElementById("measureModal");
+        const tabD = document.getElementById("hmTabD");
+        const tabL = document.getElementById("hmTabL");
+        const note = document.getElementById("hmNote");
+        const refIn = document.getElementById("hmRefIn");
+        const btnClose = document.getElementById("hmClose");
+        const btnCapture = document.getElementById("hmCapture");
+        const btnRetake = document.getElementById("hmRetake");
+        const btnApply = document.getElementById("hmApply");
+        const btnModeRuler = document.getElementById("hmModeRuler");
+        const btnModeMeasure = document.getElementById("hmModeMeasure");
+        const calculatedDiameter = document.getElementById("hmCalculatedDiameter");
+        const calculatedLength = document.getElementById("hmCalculatedLength");
+
+        // Live + drawing
+        const video = document.getElementById("hmVideo");
+        const canvas = document.getElementById("hmCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Thumbs
+        const cThumbD = document.getElementById("hmThumbD");
+        const cThumbL = document.getElementById("hmThumbL");
+        const vD = document.getElementById("hmValD");
+        const vL = document.getElementById("hmValL");
+
+        // State
+        let mode = "D"; // 'D' or 'L' - which dimension to measure
+        let stream = null;
+        let still = null; // Image of last captured frame
+        let rulerLine = null; // Calibration line (in IMAGE coordinates)
+        let measurementLine = null; // Actual measurement line (in IMAGE coordinates)
+        let line = null; // Current line being drawn
+        let drawing = false;
+        let pxPerInch = null;
+        let measuredD = null,
+          measuredL = null;
+        let drawMode = "ruler"; // 'ruler' or 'measurement'
+
+        // Zoom & Pan state
+        let scale = 1.0; // Zoom level
+        let offsetX = 0; // Pan X
+        let offsetY = 0; // Pan Y
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let lastTouchDistance = 0;
+
+        // Image dimensions after drawContain
+        let imgDrawWidth = 0;
+        let imgDrawHeight = 0;
+        let imgDrawX = 0;
+        let imgDrawY = 0;
+
+        // Animation loop for live video
+        let animationId = null;
+
+        function startVideoLoop() {
+          if (animationId) return; // Already running
+          function loop() {
+            if (!still && stream && video.videoWidth) {
+              draw();
+            }
+            animationId = requestAnimationFrame(loop);
+          }
+          animationId = requestAnimationFrame(loop);
+        }
+
+        function stopVideoLoop() {
+          if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+          }
+        }
+
+        // Camera
+        async function openCam() {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+            video.srcObject = stream;
+            await video.play();
+            fitAndDraw();
+            startVideoLoop();
+          } catch (e) {
+            alert("Camera error: " + e.message);
+          }
+        }
+        function closeCam() {
+          if (stream) {
+            stream.getTracks().forEach((t) => t.stop());
+            stream = null;
+          }
+          try {
+            video.pause();
+          } catch (_) {}
+          video.removeAttribute("srcObject");
+        }
+
+        // Layout / drawing
+        function fitAndDraw() {
+          const box = canvas.parentElement.getBoundingClientRect();
+          canvas.width = box.width;
+          canvas.height = box.height;
+          draw();
+        }
+
+        function draw() {
+          if (!ctx) return;
+          const w = canvas.width,
+            h = canvas.height;
+
+          // Clear and reset transform
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, w, h);
+
+          // Draw the still image or live video
+          if (still && still.complete) {
+            const imgToShow = still;
+            // Hide video when showing still image
+            if (video) video.style.opacity = "0";
+
+            // Fill background with black
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, w, h);
+
+            // Calculate contained image dimensions
+            const s = Math.min(w / imgToShow.naturalWidth, h / imgToShow.naturalHeight);
+            const imgW = imgToShow.naturalWidth * s;
+            const imgH = imgToShow.naturalHeight * s;
+
+            // Store for pan constraints
+            imgDrawWidth = imgW;
+            imgDrawHeight = imgH;
+
+            // Apply transform: translate to center, scale, pan, then offset to top-left
+            ctx.save();
+
+            // Move origin to center of canvas
+            ctx.translate(w / 2, h / 2);
+
+            // Apply scale
+            ctx.scale(scale, scale);
+
+            // Apply pan offset (in scaled space)
+            ctx.translate(offsetX / scale, offsetY / scale);
+
+            // Move to top-left corner of where image should be drawn (centered)
+            ctx.translate(-imgW / 2, -imgH / 2);
+
+            // Draw image at origin
+            ctx.drawImage(imgToShow, 0, 0, imgW, imgH);
+
+            ctx.restore();
+
+            // Draw lines in same transformed space
+            ctx.save();
+
+            // Same transform sequence
+            ctx.translate(w / 2, h / 2);
+            ctx.scale(scale, scale);
+            ctx.translate(offsetX / scale, offsetY / scale);
+            ctx.translate(-imgW / 2, -imgH / 2);
+
+            // Draw ruler line (green) if exists
+            if (rulerLine) {
+              ctx.lineWidth = 2 / scale;
+              ctx.strokeStyle = "#22c55e"; // Green for ruler calibration
+              ctx.lineCap = "round";
+              ctx.beginPath();
+              ctx.moveTo(rulerLine.x1, rulerLine.y1);
+              ctx.lineTo(rulerLine.x2, rulerLine.y2);
+              ctx.stroke();
+            }
+
+            // Draw measurement line (red) if exists
+            if (measurementLine) {
+              ctx.lineWidth = 2 / scale;
+              ctx.strokeStyle = "#ef4444"; // Red for measurement
+              ctx.lineCap = "round";
+              ctx.beginPath();
+              ctx.moveTo(measurementLine.x1, measurementLine.y1);
+              ctx.lineTo(measurementLine.x2, measurementLine.y2);
+              ctx.stroke();
+            }
+
+            // Draw current line being drawn
+            if (line) {
+              ctx.lineWidth = 2 / scale;
+              ctx.strokeStyle = drawMode === "ruler" ? "#22c55e" : "#ef4444"; // Green for ruler, Red for measurement
+              ctx.lineCap = "round";
+              ctx.beginPath();
+              ctx.moveTo(line.x1, line.y1);
+              ctx.lineTo(line.x2, line.y2);
+              ctx.stroke();
+            }
+
+            ctx.restore();
+          } else if (video && video.videoWidth) {
+            // Show video when no still image
+            if (video) video.style.opacity = "1";
+            ctx.drawImage(video, 0, 0, w, h);
+          } else {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, w, h);
+          }
+
+          // Update zoom level display
+          updateZoomDisplay();
+        }
+
+        function drawContain(img, ctx, cw, ch) {
+          const s = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
+          const dw = img.naturalWidth * s,
+            dh = img.naturalHeight * s;
+          const dx = (cw - dw) / 2,
+            dy = (ch - dh) / 2;
+
+          // Store these for pan constraints
+          imgDrawWidth = dw;
+          imgDrawHeight = dh;
+          imgDrawX = dx;
+          imgDrawY = dy;
+
+          ctx.drawImage(img, dx, dy, dw, dh);
+        }
+
+        function captureStill() {
+          if (!video.videoWidth) return false;
+          const tmp = document.createElement("canvas");
+          tmp.width = video.videoWidth;
+          tmp.height = video.videoHeight;
+          const tmpCtx = tmp.getContext("2d");
+          tmpCtx.drawImage(video, 0, 0);
+          const img = new Image();
+          img.onload = () => {
+            still = img;
+            resetZoom();
+            fitAndDraw();
+            updateUI();
+          };
+          img.src = tmp.toDataURL("image/png");
+          return true;
+        }
+
+        // Zoom functions
+        function resetZoom() {
+          scale = 1.0;
+          offsetX = 0;
+          offsetY = 0;
+        }
+
+        function zoom(delta, centerX, centerY) {
+          const oldScale = scale;
+          scale = Math.max(1.0, Math.min(5.0, scale * delta));
+
+          // Adjust offset to zoom towards center point
+          if (centerX !== undefined && centerY !== undefined) {
+            offsetX = centerX - (centerX - offsetX) * (scale / oldScale);
+            offsetY = centerY - (centerY - offsetY) * (scale / oldScale);
+          }
+
+          constrainPan();
+          draw();
+        }
+
+        function constrainPan() {
+          if (scale <= 1.0) {
+            offsetX = 0;
+            offsetY = 0;
+            return;
+          }
+
+          // Calculate how much the scaled image exceeds canvas bounds
+          const scaledWidth = imgDrawWidth * scale;
+          const scaledHeight = imgDrawHeight * scale;
+
+          // How much has the image grown beyond its original contained size
+          const excessWidth = scaledWidth - imgDrawWidth;
+          const excessHeight = scaledHeight - imgDrawHeight;
+
+          // Max pan is half the excess (we can pan left/right by this much)
+          const maxOffsetX = excessWidth / 2;
+          const maxOffsetY = excessHeight / 2;
+
+          // Constrain the offsets
+          offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, offsetX));
+          offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, offsetY));
+        }
+
+        function updateZoomDisplay() {
+          // Zoom level display removed - function kept for compatibility
+        }
+
+        // Convert screen coordinates to image coordinates
+        function screenToImage(screenX, screenY) {
+          const rect = canvas.getBoundingClientRect();
+          const canvasX = screenX - rect.left;
+          const canvasY = screenY - rect.top;
+
+          const w = canvas.width;
+          const h = canvas.height;
+
+          // Reverse the transform sequence:
+          // 1. Subtract canvas center
+          let x = canvasX - w / 2;
+          let y = canvasY - h / 2;
+
+          // 2. Reverse scale
+          x = x / scale;
+          y = y / scale;
+
+          // 3. Reverse pan
+          x = x - offsetX / scale;
+          y = y - offsetY / scale;
+
+          // 4. Reverse image centering (add back half image size)
+          x = x + imgDrawWidth / 2;
+          y = y + imgDrawHeight / 2;
+
+          return { x: x, y: y };
+        }
+
+        // Pointer events for drawing lines
+        function getPointerPos(e) {
+          const t = "touches" in e ? e.touches[0] : e;
+          return screenToImage(t.clientX, t.clientY);
+        }
+
+        // Prevent context menu on canvas for right-click pan
+        canvas.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+        });
+
+        // Mouse events - left click to draw, right click to pan
+        canvas.addEventListener("mousedown", (e) => {
+          if (e.button === 2) {
+            // Right click - pan
+            e.preventDefault();
+            isPanning = true;
+            panStartX = e.clientX - offsetX;
+            panStartY = e.clientY - offsetY;
+            canvas.style.cursor = "grabbing";
+          } else if (e.button === 0) {
+            // Left click - draw (only when image is captured)
+            if (!still) return;
+            drawing = true;
+            const p = getPointerPos(e);
+            line = { x1: p.x, y1: p.y, x2: p.x, y2: p.y };
+            draw();
+          }
+        });
+
+        canvas.addEventListener("mousemove", (e) => {
+          if (isPanning) {
+            offsetX = e.clientX - panStartX;
+            offsetY = e.clientY - panStartY;
+            constrainPan();
+            draw();
+          } else if (drawing) {
+            const p = getPointerPos(e);
+            line.x2 = p.x;
+            line.y2 = p.y;
+            draw();
+          }
+        });
+
+        window.addEventListener("mouseup", () => {
+          if (drawing && line) {
+            // Save the completed line based on current draw mode
+            if (drawMode === "ruler") {
+              rulerLine = { ...line };
+            } else {
+              measurementLine = { ...line };
+            }
+            autoCalculate();
+            draw();
+          }
+          drawing = false;
+          isPanning = false;
+          canvas.style.cursor = still ? "crosshair" : "default";
+        });
+
+        // Update cursor for drawing
+        canvas.addEventListener("mouseenter", () => {
+          canvas.style.cursor = "crosshair";
+        });
+
+        // Mouse wheel for zoom
+        canvas.addEventListener(
+          "wheel",
+          (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoom(delta, e.offsetX, e.offsetY);
+          },
+          { passive: false }
+        );
+
+        // Touch events for drawing and pinch-zoom
+        let touchMode = null; // 'draw', 'pan', or 'pinch'
+
+        canvas.addEventListener(
+          "touchstart",
+          (e) => {
+            if (e.touches.length === 1) {
+              // Single touch - only draw when image is captured
+              if (!still) return; // Don't draw on live video
+              touchMode = "draw";
+              drawing = true;
+              const p = getPointerPos(e);
+              line = { x1: p.x, y1: p.y, x2: p.x, y2: p.y };
+              draw();
+            } else if (e.touches.length === 2) {
+              // Two fingers - pinch zoom
+              touchMode = "pinch";
+              drawing = false;
+              isPanning = false;
+              const dx = e.touches[1].clientX - e.touches[0].clientX;
+              const dy = e.touches[1].clientY - e.touches[0].clientY;
+              lastTouchDistance = Math.hypot(dx, dy);
+            }
+          },
+          { passive: true }
+        );
+
+        canvas.addEventListener(
+          "touchmove",
+          (e) => {
+            if (touchMode === "draw" && e.touches.length === 1) {
+              const p = getPointerPos(e);
+              line.x2 = p.x;
+              line.y2 = p.y;
+              draw();
+            } else if (e.touches.length === 2) {
+              // Pinch zoom
+              touchMode = "pinch";
+              drawing = false;
+
+              const dx = e.touches[1].clientX - e.touches[0].clientX;
+              const dy = e.touches[1].clientY - e.touches[0].clientY;
+              const distance = Math.hypot(dx, dy);
+
+              if (lastTouchDistance > 0) {
+                const delta = distance / lastTouchDistance;
+                const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const rect = canvas.getBoundingClientRect();
+                zoom(delta, centerX - rect.left, centerY - rect.top);
+              }
+
+              lastTouchDistance = distance;
+            } else if (e.touches.length === 1 && touchMode === "pinch") {
+              // After pinch, switch to pan
+              touchMode = "pan";
+              const touch = e.touches[0];
+              panStartX = touch.clientX - offsetX;
+              panStartY = touch.clientY - offsetY;
+            } else if (touchMode === "pan" && e.touches.length === 1) {
+              const touch = e.touches[0];
+              offsetX = touch.clientX - panStartX;
+              offsetY = touch.clientY - panStartY;
+              constrainPan();
+              draw();
+            }
+          },
+          { passive: true }
+        );
+
+        canvas.addEventListener(
+          "touchend",
+          (e) => {
+            if (e.touches.length === 0) {
+              if (drawing && line && touchMode === "draw") {
+                // Save the completed line based on current draw mode
+                if (drawMode === "ruler") {
+                  rulerLine = { ...line };
+                } else {
+                  measurementLine = { ...line };
+                }
+                autoCalculate();
+                draw();
+              }
+              drawing = false;
+              isPanning = false;
+              touchMode = null;
+              lastTouchDistance = 0;
+            } else if (e.touches.length === 1 && touchMode === "pinch") {
+              // Transition from pinch to pan
+              touchMode = "pan";
+              const touch = e.touches[0];
+              panStartX = touch.clientX - offsetX;
+              panStartY = touch.clientY - offsetY;
+            }
+          },
+          { passive: true }
+        );
+
+        function linePixels() {
+          if (!line) return 0;
+          return Math.hypot(line.x2 - line.x1, line.y2 - line.y1);
+        }
+
+        // Thumbs
+        function paintThumb(dstCanvas, img, lineObj, label, lineColor, refLineObj) {
+          if (!dstCanvas || !img) return;
+          const w = (dstCanvas.width = Math.min(640, dstCanvas.parentElement.clientWidth));
+          const h = (dstCanvas.height = Math.round((w * 3) / 4));
+          const tctx = dstCanvas.getContext("2d");
+          tctx.clearRect(0, 0, w, h);
+          drawContain(img, tctx, w, h);
+
+          // Calculate scale for thumbnail
+          const imgScale = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+          const dw = img.naturalWidth * imgScale;
+          const dh = img.naturalHeight * imgScale;
+          const dx = (w - dw) / 2;
+          const dy = (h - dh) / 2;
+
+          // Draw reference line (green) if provided
+          if (refLineObj) {
+            const tx1 = refLineObj.x1 * imgScale + dx;
+            const ty1 = refLineObj.y1 * imgScale + dy;
+            const tx2 = refLineObj.x2 * imgScale + dx;
+            const ty2 = refLineObj.y2 * imgScale + dy;
+
+            tctx.lineWidth = 2;
+            tctx.strokeStyle = "#22c55e"; // Green for reference line
+            tctx.lineCap = "round";
+            tctx.beginPath();
+            tctx.moveTo(tx1, ty1);
+            tctx.lineTo(tx2, ty2);
+            tctx.stroke();
+          }
+
+          // Draw measurement line if provided
+          if (lineObj) {
+            const tx1 = lineObj.x1 * imgScale + dx;
+            const ty1 = lineObj.y1 * imgScale + dy;
+            const tx2 = lineObj.x2 * imgScale + dx;
+            const ty2 = lineObj.y2 * imgScale + dy;
+
+            tctx.lineWidth = 2;
+            tctx.strokeStyle = lineColor || "#ef4444"; // Use provided color or default to red
+            tctx.lineCap = "round";
+            tctx.beginPath();
+            tctx.moveTo(tx1, ty1);
+            tctx.lineTo(tx2, ty2);
+            tctx.stroke();
+          }
+          if (label) {
+            tctx.fillStyle = "rgba(0,0,0,.55)";
+            tctx.fillRect(8, 8, 170, 28);
+            tctx.fillStyle = "#fff";
+            tctx.font = "bold 14px system-ui, -apple-system, Segoe UI, Roboto";
+            tctx.fillText(label, 16, 28);
+          }
+        }
+
+        // Update UI for current draw mode
+        function updateUI() {
+          // Update button styles based on current draw mode
+          if (drawMode === "ruler") {
+            btnModeRuler.style.boxShadow = "0 0 0 4px rgba(34, 197, 94, 0.5)";
+            btnModeMeasure.style.boxShadow = "none";
+          } else {
+            btnModeRuler.style.boxShadow = "none";
+            btnModeMeasure.style.boxShadow = "0 0 0 4px rgba(239, 68, 68, 0.5)";
+          }
+
+          if (!still) {
+            // No image captured yet - show live video
+            note.textContent = "Position camera, then press Capture.";
+          } else if (drawMode === "ruler") {
+            note.textContent = "Draw green line over ruler, enter known inches.";
+          } else {
+            note.textContent = `Draw red line for full ${mode === "D" ? "diameter" : "length"}.`;
+          }
+        }
+
+        // Update calculations automatically
+        function autoCalculate() {
+          // Calculate pxPerInch from ruler line
+          if (rulerLine) {
+            const rulerPx = Math.hypot(rulerLine.x2 - rulerLine.x1, rulerLine.y2 - rulerLine.y1);
+            const ref = parseFloat(refIn.value);
+            if (isFinite(ref) && ref > 0 && rulerPx > 10) {
+              pxPerInch = rulerPx / ref;
+            }
+          }
+
+          // Calculate measurement from measurement line
+          if (measurementLine && pxPerInch) {
+            const measurePx = Math.hypot(measurementLine.x2 - measurementLine.x1, measurementLine.y2 - measurementLine.y1);
+            const inches = measurePx / pxPerInch;
+
+            if (mode === "D") {
+              measuredD = inches;
+              if (calculatedDiameter) calculatedDiameter.value = inches.toFixed(0);
+              // Update thumbnail
+              paintThumb(cThumbD, still, measurementLine, `≈ ${inches.toFixed(0)} in`, "#ef4444", rulerLine);
+              if (vD) vD.textContent = `${inches.toFixed(0)} in`;
+            } else {
+              measuredL = inches;
+              if (calculatedLength) calculatedLength.value = inches.toFixed(0);
+              // Update thumbnail
+              paintThumb(cThumbL, still, measurementLine, `≈ ${inches.toFixed(0)} in`, "#ef4444", rulerLine);
+              if (vL) vL.textContent = `${inches.toFixed(0)} in`;
+            }
+          }
+        }
+
+        // Mode switch (Diameter/Length tabs)
+        function setMode(m) {
+          mode = m;
+          tabD.classList.toggle("active", m === "D");
+          tabL.classList.toggle("active", m === "L");
+          // Reset measurement line when switching dimension, keep ruler calibration
+          measurementLine = null;
+          line = null;
+          // Don't auto-capture - keep current still or live video
+          updateUI();
+          draw();
+        }
+        tabD.addEventListener("click", () => setMode("D"));
+        tabL.addEventListener("click", () => setMode("L"));
+
+        // Capture button - freeze the camera feed
+        btnCapture.addEventListener("click", () => {
+          if (captureStill()) {
+            draw();
+            updateUI();
+          }
+        });
+
+        // Retake - go back to live video
+        btnRetake.addEventListener("click", () => {
+          // Clear all lines and measurements
+          rulerLine = null;
+          measurementLine = null;
+          line = null;
+          pxPerInch = null;
+          drawMode = "ruler";
+
+          // Clear the appropriate input field based on mode
+          if (mode === "D") {
+            if (calculatedDiameter) calculatedDiameter.value = "";
+            measuredD = null;
+          } else {
+            if (calculatedLength) calculatedLength.value = "";
+            measuredL = null;
+          }
+          resetZoom();
+          still = null; // Clear still to show live video
+          draw();
+          updateUI();
+        });
+
+        // Ruler button - switch to ruler drawing mode
+        btnModeRuler.addEventListener("click", () => {
+          drawMode = "ruler";
+          line = null; // Clear current line
+          updateUI();
+          draw();
+        });
+
+        // Full Measurement button - switch to measurement drawing mode
+        btnModeMeasure.addEventListener("click", () => {
+          if (!rulerLine) {
+            alert("Please draw the ruler calibration line first.");
+            return;
+          }
+          if (!pxPerInch) {
+            const ref = parseFloat(refIn.value);
+            if (!isFinite(ref) || ref <= 0) {
+              alert("Please enter a valid reference length (e.g., 6 or 12 inches).");
+              return;
+            }
+            // Calculate pxPerInch now
+            const rulerPx = Math.hypot(rulerLine.x2 - rulerLine.x1, rulerLine.y2 - rulerLine.y1);
+            pxPerInch = rulerPx / ref;
+          }
+          drawMode = "measurement";
+          line = null; // Clear current line
+          updateUI();
+          draw();
+        });
+
+        // Auto-calculate when reference inches changes
+        refIn.addEventListener("input", () => {
+          autoCalculate();
+        });
+
+        // Apply button - transfer values to main calculator page and close modal
+        btnApply.addEventListener("click", () => {
+          const diameterValue = parseFloat(calculatedDiameter.value);
+          const lengthValue = parseFloat(calculatedLength.value);
+
+          let applied = false;
+
+          // Apply diameter if it exists
+          if (isFinite(diameterValue) && diameterValue > 0 && measuredD) {
+            showGeo();
+            putVal(geoDiameter, measuredD);
+            applied = true;
+          }
+
+          // Apply length if it exists
+          if (isFinite(lengthValue) && lengthValue > 0 && measuredL) {
+            showGeo();
+            putVal(geoLength, measuredL);
+            applied = true;
+          }
+
+          if (applied) {
+            // Reset all modal state
+            measuredD = measuredL = null;
+            line = null;
+            rulerLine = null;
+            measurementLine = null;
+            still = null;
+            pxPerInch = null;
+            drawMode = "ruler";
+
+            // Clear input fields
+            if (calculatedDiameter) calculatedDiameter.value = "";
+            if (calculatedLength) calculatedLength.value = "";
+
+            // Clear thumbnails
+            vD.textContent = "";
+            vL.textContent = "";
+            if (cThumbD) {
+              const ctx = cThumbD.getContext("2d");
+              ctx.clearRect(0, 0, cThumbD.width, cThumbD.height);
+            }
+            if (cThumbL) {
+              const ctx = cThumbL.getContext("2d");
+              ctx.clearRect(0, 0, cThumbL.width, cThumbL.height);
+            }
+
+            // Close the modal
+            closeModal();
+          } else {
+            alert("Please complete at least one measurement by drawing ruler and measurement lines.");
+          }
+        });
+
+        // Open/close modal
+        function openModal() {
+          modal.classList.add("open");
+          measuredD = measuredL = null;
+          line = null;
+          rulerLine = null;
+          measurementLine = null;
+          still = null;
+          pxPerInch = null;
+          drawMode = "ruler";
+          vD.textContent = "";
+          vL.textContent = "";
+          // Clear all input fields
+          if (calculatedDiameter) calculatedDiameter.value = "";
+          if (calculatedLength) calculatedLength.value = "";
+          // Set default reference value
+          refIn.value = "12";
+          resetZoom();
+          updateUI();
+          openCam().then(() => {
+            fitAndDraw();
+          });
+        }
+        function closeModal() {
+          modal.classList.remove("open");
+          stopVideoLoop();
+          closeCam();
+          resetZoom();
+        }
+        btnClose.addEventListener("click", closeModal);
+
+        // Ensure modal is closed on page load/hard reload
+        if (modal) {
+          modal.classList.remove("open");
+          closeCam(); // Also close camera if it was left open
+        }
+
+        // Wire up main page triggers
+        document.getElementById("btnMeasure")?.addEventListener("click", openModal);
+
+        // Track if page just loaded to prevent auto-opening modal on browser form restoration
+        let pageJustLoaded = true;
+        setTimeout(() => {
+          pageJustLoaded = false;
+        }, 100);
+
+        document.getElementById("tankType")?.addEventListener("change", (e) => {
+          // Only auto-open modal if this is a real user interaction, not initial page load
+          if (e.target.value === "laydown" && !pageJustLoaded) {
+            openModal();
+          }
+        });
+
+        // Resize
+        window.addEventListener("resize", () => {
+          if (modal.classList.contains("open")) fitAndDraw();
+        });
+      })();
+    </script>
+    <!-- === SCRIPTS: MEASURE MODAL END === -->
+
+    <!-- === SCRIPTS: CALCULATOR START === -->
+    <script>
+      (function () {
+        /* ----- Gas constants (define if missing) ----- */
+        // You can tweak these to match your operation’s tables.
+        // Defaults are typical STP approximations used in industry.
+        window.gases = window.gases || {
+          LIN: { scfPerGal: 93.1, lbPerGal: 6.74, scfPerLb: 13.8 }, // Nitrogen
+          LOX: { scfPerGal: 115.0, lbPerGal: 9.52, scfPerLb: 12.06 }, // Oxygen
+          LAR: { scfPerGal: 87.3, lbPerGal: 9.4, scfPerLb: 9.3 }, // Argon
+        };
+
+        /* ----- API Configuration ----- */
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwwEX98Jgo6djkOqENe-2dWl-blam_6IOJaIeV5TYEc2-kPsV8_QI_9fMtCC_k5z7Tg/exec";
+
+        function getAuth() {
+          try {
+            return JSON.parse(localStorage.getItem("cryo_auth") || "null");
+          } catch {
+            return null;
+          }
+        }
+
+        /* ----- Hide Save and Records buttons for guest users ----- */
+        (function hideButtonsForGuest() {
+          const auth = getAuth();
+          if (auth && auth.role === "guest") {
+            const btnSave = document.getElementById("btnSave");
+            const btnSaveSplit = document.getElementById("btnSaveSplit");
+            const btnSaveReserve = document.getElementById("btnSaveReserve");
+            const btnHistory = document.getElementById("btnHistory");
+            const btnHistorySplit = document.getElementById("btnHistorySplit");
+            const btnHistoryReserve = document.getElementById("btnHistoryReserve");
+            if (btnSave) btnSave.style.display = "none";
+            if (btnSaveSplit) btnSaveSplit.style.display = "none";
+            if (btnSaveReserve) btnSaveReserve.style.display = "none";
+            if (btnHistory) btnHistory.style.display = "none";
+            if (btnHistorySplit) btnHistorySplit.style.display = "none";
+            if (btnHistoryReserve) btnHistoryReserve.style.display = "none";
+          }
+        })();
+
+        /* ----- Save Calculation to Backend ----- */
+        window.saveCalculation = async function () {
+          const auth = getAuth();
+          const output = document.getElementById("output");
+          const btnSave = document.getElementById("btnSave");
+
+          if (!auth || !auth.token) {
+            alert("Please login to save records.\n\nReload the app and login with your credentials.");
+            return;
+          }
+
+          if (!output || !output.textContent || output.textContent.includes("Enter values")) {
+            alert("Please calculate something first before saving.");
+            return;
+          }
+
+          // Clean result text - remove technical labels that shouldn't be saved
+          function cleanResultText(text) {
+            return text
+              .replace(/\s*\(linear\)/gi, "")
+              .replace(/\s*\(local\):?/gi, "")
+              .replace(/\s*\(official\):?/gi, "")
+              .replace(/\s*\(geometry\)/gi, "")
+              .replace(/\s*\(primary\)/gi, "")
+              .replace(/Vertical Tank\s*/gi, "")
+              .replace(/Results —\s*/gi, "")
+              .replace(/Inches\s*•?\s*/gi, "")
+              .replace(/Timer × Flow\s*•?\s*/gi, "")
+              .replace(/\s+/g, " ")
+              .trim();
+          }
+
+          // Collect calculation data
+          const record = {
+            tank_type: document.getElementById("tankType")?.value || "",
+            full_inches: document.getElementById("fullInches")?.value || "",
+            start_inches: document.getElementById("startInches")?.value || "",
+            end_inches: document.getElementById("endInches")?.value || "",
+            capacity: document.getElementById("fullCap")?.value || "",
+            capacity_unit: document.getElementById("capUnit")?.value || "",
+            gas: document.getElementById("gas")?.value || "",
+            flow_value: document.getElementById("flowValue")?.value || "",
+            timer_elapsed: document.getElementById("elapsed")?.textContent || "",
+            result_text: cleanResultText(output.textContent).substring(0, 1000),
+            timestamp: new Date().toISOString()
+          };
+
+          // Disable button and show loading
+          btnSave.disabled = true;
+          btnSave.textContent = "Saving...";
+
+          try {
+            // Use text/plain to avoid CORS preflight (no OPTIONS request)
+            // Apps Script will still parse JSON from the body
+            const response = await fetch(API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain"
+              },
+              body: JSON.stringify({
+                action: "save",
+                type: "calc",
+                token: auth.token,
+                record: record
+              }),
+              redirect: "follow"
+            });
+
+            const data = await response.json();
+
+            if (data.ok) {
+              alert("✓ Calculation saved successfully!");
+            } else {
+              alert("Save failed: " + (data.error || "Unknown error"));
+            }
+          } catch (err) {
+            console.error("Save error:", err);
+            alert("Network error. Please check your connection.");
+          } finally {
+            btnSave.disabled = false;
+            btnSave.textContent = "💾 Save";
+          }
+        };
+
+        /* ----- Save Split Calculation to Backend ----- */
+        window.saveSplit = async function () {
+          const auth = getAuth();
+          const btnSaveSplit = document.getElementById("btnSaveSplit");
+
+          if (!auth || !auth.token) {
+            alert("Please login to save records.\n\nReload the app and login with your credentials.");
+            return;
+          }
+
+          const t1SCF = document.getElementById("t1SCF")?.value || "";
+          const t2SCF = document.getElementById("t2SCF")?.value || "";
+
+          if (!t1SCF || !t2SCF || t1SCF === "0" || t2SCF === "0") {
+            alert("Please calculate the split first before saving.");
+            return;
+          }
+
+          // Collect split data matching Google Sheet columns:
+          // record_id, user_id, timestamp, source_tank, destination, amount_scf, gas, notes, result_text, source
+          const record = {
+            source_tank: document.getElementById("splitTotalSCF")?.value || "",
+            destination: "Tank1: " + t1SCF + " SCF, Tank2: " + t2SCF + " SCF",
+            amount_scf: document.getElementById("splitTotalSCF")?.value || "",
+            gas: document.getElementById("splitGas")?.value || "",
+            notes: "T1: " + (document.getElementById("t1Start")?.value || "0") + "-" + (document.getElementById("t1End")?.value || "0") + "in, " +
+                   "T2: " + (document.getElementById("t2Start")?.value || "0") + "-" + (document.getElementById("t2End")?.value || "0") + "in",
+            result_text: "Total: " + (document.getElementById("splitTotalSCF")?.value || "0") + " SCF → Tank1: " + t1SCF + " SCF, Tank2: " + t2SCF + " SCF",
+            timestamp: new Date().toISOString()
+          };
+
+          // Disable button and show loading
+          btnSaveSplit.disabled = true;
+          btnSaveSplit.textContent = "Saving...";
+
+          try {
+            const response = await fetch(API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain"
+              },
+              body: JSON.stringify({
+                action: "save",
+                type: "split",
+                token: auth.token,
+                record: record
+              }),
+              redirect: "follow"
+            });
+
+            const data = await response.json();
+
+            if (data.ok) {
+              alert("✓ Split calculation saved successfully!");
+            } else {
+              alert("Save failed: " + (data.error || "Unknown error"));
+            }
+          } catch (err) {
+            console.error("Save error:", err);
+            alert("Network error. Please check your connection.");
+          } finally {
+            btnSaveSplit.disabled = false;
+            btnSaveSplit.textContent = "💾 Save";
+          }
+        };
+
+        /* ----- Save Reserve Calculation to Backend ----- */
+        window.saveReserve = async function () {
+          const auth = getAuth();
+          const btnSaveReserve = document.getElementById("btnSaveReserve");
+
+          if (!auth || !auth.token) {
+            alert("Please login to save records.\n\nReload the app and login with your credentials.");
+            return;
+          }
+
+          const remaining = document.getElementById("resRemaining")?.value || "";
+
+          if (!remaining || remaining === "0") {
+            alert("Please calculate the reserve first before saving.");
+            return;
+          }
+
+          // Collect reserve data matching Google Sheet columns:
+          // record_id, user_id, timestamp, reserve_amount, gas, remaining, warning_flag, result_text, source
+          const resAmount = document.getElementById("resAmount")?.value || "";
+          const resGas = document.getElementById("resGas")?.value || "";
+          const t1 = document.getElementById("resT1")?.value || "0";
+          const t2 = document.getElementById("resT2")?.value || "0";
+          const t3 = document.getElementById("resT3")?.value || "0";
+          const t4 = document.getElementById("resT4")?.value || "0";
+
+          const remainingNum = parseFloat(remaining) || 0;
+          const warningFlag = remainingNum < 0 ? "OVER" : (remainingNum < 1000 ? "LOW" : "OK");
+
+          const record = {
+            reserve_amount: resAmount,
+            gas: resGas,
+            remaining: remaining,
+            warning_flag: warningFlag,
+            result_text: "Amount: " + resAmount + " " + resGas + " → Tanks: " + t1 + "/" + t2 + "/" + t3 + "/" + t4 + " SCF → Remaining: " + remaining + " SCF",
+            timestamp: new Date().toISOString()
+          };
+
+          // Disable button and show loading
+          btnSaveReserve.disabled = true;
+          btnSaveReserve.textContent = "Saving...";
+
+          try {
+            const response = await fetch(API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain"
+              },
+              body: JSON.stringify({
+                action: "save",
+                type: "reserve",
+                token: auth.token,
+                record: record
+              }),
+              redirect: "follow"
+            });
+
+            const data = await response.json();
+
+            if (data.ok) {
+              alert("✓ Reserve calculation saved successfully!");
+            } else {
+              alert("Save failed: " + (data.error || "Unknown error"));
+            }
+          } catch (err) {
+            console.error("Save error:", err);
+            alert("Network error. Please check your connection.");
+          } finally {
+            btnSaveReserve.disabled = false;
+            btnSaveReserve.textContent = "💾 Save";
+          }
+        };
+
+        /* ----- UI: show/hide laydown-only fields ----- */
+        const tankTypeSel = document.getElementById("tankType");
+        const geoFields = document.getElementById("geoFields");
+        const geoDiameter = document.getElementById("geoDiameter");
+        const geoLength = document.getElementById("geoLength");
+        const diamHint = document.getElementById("diamHint");
+
+        function setGeoVisibility() {
+          const isLaydown = tankTypeSel && tankTypeSel.value === "laydown";
+          if (geoFields) geoFields.hidden = !isLaydown;
+          if (geoDiameter) geoDiameter.disabled = !isLaydown;
+          if (geoLength) geoLength.disabled = !isLaydown;
+          if (diamHint) diamHint.hidden = !isLaydown;
+        }
+        if (tankTypeSel) {
+          tankTypeSel.addEventListener("change", setGeoVisibility);
+          setGeoVisibility();
+        }
+
+        /* ----- TIMER (Start/Stop) ----- */
+        let t0 = null,
+          t1 = null,
+          intervalId = null;
+        const $elapsed = document.getElementById("elapsed");
+        const $btnStart = document.getElementById("btnStart");
+        const $btnStop = document.getElementById("btnStop");
+
+        function fmtTime(ms) {
+          if (!ms || ms < 0) return "00:00:00";
+          const s = Math.floor(ms / 1000);
+          const h = String(Math.floor(s / 3600)).padStart(2, "0");
+          const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+          const sec = String(s % 60).padStart(2, "0");
+          return `${h}:${m}:${sec}`;
+        }
+        function updateElapsed() {
+          if (!t0) return;
+          const now = t1 && Number.isFinite(t1) ? t1 : Date.now();
+          if ($elapsed) $elapsed.textContent = "Elapsed: " + fmtTime(now - t0);
+        }
+        function startTimer() {
+          t0 = Date.now();
+          t1 = null;
+          if ($elapsed) $elapsed.textContent = "Elapsed: 00:00:00";
+          if (intervalId) clearInterval(intervalId);
+          intervalId = setInterval(updateElapsed, 250);
+          if ($btnStart) $btnStart.disabled = true;
+          if ($btnStop) $btnStop.disabled = false;
+        }
+        function stopTimer() {
+          if (!t0) return;
+          t1 = Date.now();
+          if (intervalId) clearInterval(intervalId);
+          updateElapsed();
+          if ($btnStart) $btnStart.disabled = false;
+          if ($btnStop) $btnStop.disabled = true;
+        }
+        $btnStart?.addEventListener("click", startTimer);
+        $btnStop?.addEventListener("click", stopTimer);
+
+        /* ----- Flow unit toggle (gal/min ↔ lb/min) ----- */
+        const unitSwitch = document.getElementById("unitSwitch");
+        function isLbMode() {
+          return unitSwitch && unitSwitch.classList.contains("on");
+        }
+        function setUnitSwitch(on) {
+          if (!unitSwitch) return;
+          unitSwitch.classList.toggle("on", !!on);
+          unitSwitch.setAttribute("aria-checked", on ? "true" : "false");
+        }
+        unitSwitch?.addEventListener("click", () => setUnitSwitch(!isLbMode()));
+        unitSwitch?.addEventListener("keydown", (e) => {
+          if (e.key === " " || e.key === "Enter") {
+            e.preventDefault();
+            setUnitSwitch(!isLbMode());
+          }
+        });
+        setUnitSwitch(false);
+
+        /* ----- Geometry helpers for horizontal tanks ----- */
+        function horizFrac(d, h) {
+          // d: cylinder diameter (in), h: liquid height (in)
+          const R = d / 2;
+          if (!Number.isFinite(d) || !Number.isFinite(h)) return 0;
+          if (h <= 0) return 0;
+          if (h >= 2 * R) return 1;
+          const a = Math.acos((R - h) / R);
+          const Aseg = R * R * a - (R - h) * Math.sqrt(Math.max(0, 2 * R * h - h * h));
+          return Aseg / (Math.PI * R * R);
+        }
+        function estimateDiameterFromTimer(fullSCF, start, end, scfDelivered, dMin = 60, dMax = 130, step = 0.1) {
+          let bestD = null,
+            bestErr = Infinity;
+          for (let d = dMin; d <= dMax; d += step) {
+            const pred = fullSCF * (horizFrac(d, end) - horizFrac(d, start));
+            const err = Math.abs(pred - scfDelivered);
+            if (err < bestErr) {
+              bestErr = err;
+              bestD = d;
+            }
+          }
+          return { d: bestD, err: bestErr };
+        }
+        // subtract short “dead time” for horizontal fills when using timer
+        function adjustedElapsedMin(rawMin) {
+          if (!rawMin) return null;
+          const deadSec = Math.min(30, Math.max(10, rawMin * 60 * 0.05));
+          return Math.max(0, rawMin - deadSec / 60);
+        }
+
+        /* ----- CALCULATE (exposed for button onclick) ----- */
+        window.calculate = function () {
+          const tankType = document.getElementById("tankType")?.value || "vertical";
+          const gasKey = document.getElementById("gas")?.value || "LIN";
+          const gas = window.gases && window.gases[gasKey] ? window.gases[gasKey] : null;
+          const output = document.getElementById("output");
+
+          if (!gas) {
+            output.innerHTML = "Gas constants missing. Please verify LIN/LOX/LAR constants.";
+            return;
+          }
+
+          const capUnit = document.getElementById("capUnit")?.value || "scf";
+          const fullCapEntered = parseFloat(document.getElementById("fullCap")?.value);
+          if (!Number.isFinite(fullCapEntered)) {
+            output.innerHTML = "Please enter a valid Full Capacity value (SCF or Gallons).";
+            return;
+          }
+          const fullSCF = capUnit === "gal" ? fullCapEntered * gas.scfPerGal : fullCapEntered;
+
+          const start = parseFloat(document.getElementById("startInches")?.value);
+          const end = parseFloat(document.getElementById("endInches")?.value);
+
+          const elapsedMs = t0 && (t1 || Date.now()) ? (t1 || Date.now()) - t0 : null;
+          let elapsedMin = elapsedMs ? elapsedMs / 1000 / 60 : null;
+          let effectiveElapsedMin = elapsedMin;
+          if (tankType === "laydown" && elapsedMin && elapsedMin > 0) {
+            effectiveElapsedMin = adjustedElapsedMin(elapsedMin);
+          }
+
+          const flowVal = parseFloat(document.getElementById("flowValue")?.value);
+          let flowGPM = null;
+          if (Number.isFinite(flowVal)) flowGPM = isLbMode() ? flowVal / gas.lbPerGal : flowVal;
+          const flowScfMin = flowGPM ? flowGPM * gas.scfPerGal : null;
+
+          const wantEstimateD = document.getElementById("chkEstimateD")?.checked;
+          const useTimerPrimary = document.getElementById("useTimerPrimary")?.checked;
+
+          const fullTrycockIn = parseFloat(document.getElementById("fullInches")?.value);
+          const cylD = parseFloat(document.getElementById("geoDiameter")?.value);
+          let html = "";
+
+          /* Flow-only estimate if no inches provided */
+          const inchesMissing = !Number.isFinite(start) || !Number.isFinite(end);
+          if (flowGPM && effectiveElapsedMin && inchesMissing) {
+            const totalGallons = flowGPM * effectiveElapsedMin;
+            const totalSCF = totalGallons * gas.scfPerGal;
+            const enteredLabel = isLbMode() ? `${flowVal.toFixed(1)} lb/min` : `${flowVal.toFixed(1)} gal/min`;
+            html += `<h2>Flow-Only Estimate</h2>`;
+            html += `<p>Elapsed Time: <b>${fmtTime(effectiveElapsedMin * 60 * 1000)}</b> &nbsp; | &nbsp; Flow: <b>${enteredLabel}</b></p>`;
+            html += `<p><b>Estimated Product Moved:</b> ${totalGallons.toFixed(1)} gal &nbsp; (~${totalSCF.toFixed(0)} SCF)</p><hr>`;
+          }
+
+          /* Timer-first path */
+          let scf_timer = null;
+          if (useTimerPrimary && effectiveElapsedMin && flowScfMin && flowScfMin > 0) {
+            scf_timer = flowScfMin * effectiveElapsedMin;
+          }
+
+          /* Inches-based path */
+          let haveInches = Number.isFinite(start) && Number.isFinite(end) && Number.isFinite(fullSCF);
+          let scf_inches = null,
+            modeLabel = "",
+            usedD = cylD,
+            estNote = "",
+            scfPerInchShown = null;
+
+          if (haveInches) {
+            if (tankType === "laydown") {
+              if (Number.isFinite(cylD) && cylD > 0) {
+                const fs = horizFrac(cylD, Math.max(0, start));
+                const fe = horizFrac(cylD, Math.max(0, end));
+                scf_inches = fullSCF * (fe - fs);
+                modeLabel = "Laydown Tank (geometry)";
+                const mid = (start + end) / 2,
+                  eps = 0.01;
+                const df = (horizFrac(cylD, mid + eps) - horizFrac(cylD, mid - eps)) / (2 * eps);
+                scfPerInchShown = fullSCF * df;
+              } else if (wantEstimateD && effectiveElapsedMin && flowScfMin && flowScfMin > 0) {
+                const scfDelivered = flowScfMin * effectiveElapsedMin;
+                const { d } = estimateDiameterFromTimer(fullSCF, Math.max(0, start), Math.max(0, end), scfDelivered);
+                if (d) {
+                  usedD = d;
+                  estNote = ` (estimated D: ${d.toFixed(1)} in)`;
+                }
+                const fs = horizFrac(usedD, Math.max(0, start));
+                const fe = horizFrac(usedD, Math.max(0, end));
+                scf_inches = fullSCF * (fe - fs);
+                modeLabel = "Laydown Tank (geometry, est. D)";
+                const mid = (start + end) / 2,
+                  eps = 0.01;
+                const df = (horizFrac(usedD, mid + eps) - horizFrac(usedD, mid - eps)) / (2 * eps);
+                scfPerInchShown = fullSCF * df;
+              } else if (Number.isFinite(fullTrycockIn) && fullTrycockIn > 0) {
+                // simple fallback if no diameter available
+                const linearFactor = 0.94;
+                scf_inches = (end - start) * (fullSCF / fullTrycockIn) * linearFactor;
+                modeLabel = "Laydown Tank (empirical linear)";
+                scfPerInchShown = (fullSCF / fullTrycockIn) * linearFactor;
+                html += `<p class="muted">Laydown fallback used: linear ratio ×0.94 (no cylinder diameter provided).</p>`;
+              } else {
+                html += `<p class="muted">Provide cylinder diameter (or enable “Estimate diameter from timer”) to map laydown inches.</p>`;
+              }
+            } else {
+              const denom = Number.isFinite(fullTrycockIn) && fullTrycockIn > 0 ? fullTrycockIn : 1;
+              const spi = fullSCF / denom;
+              scf_inches = (end - start) * spi;
+              modeLabel = "Vertical Tank (linear)";
+              scfPerInchShown = spi;
+            }
+          }
+
+          /* Pick official result */
+          let scf = null,
+            source = "";
+          if (useTimerPrimary && scf_timer != null) {
+            scf = scf_timer;
+            source = "Timer × Flow (primary)";
+          } else if (haveInches && scf_inches != null) {
+            scf = scf_inches;
+            source = tankType === "laydown" ? "Inches (geometry)" : "Inches (linear)";
+          } else if (scf_timer != null) {
+            scf = scf_timer;
+            source = "Timer × Flow";
+          }
+
+          if (scf == null) {
+            output.innerHTML = html + "Not enough info. Provide inches OR enable timer with flow.";
+            return;
+          }
+
+          const gallons = scf / gas.scfPerGal;
+          const poundsFromGallons = gallons * gas.lbPerGal;
+          const poundsFromSCF = scf / gas.scfPerLb;
+
+          let compLine = "";
+          if (scf_timer != null && scf_inches != null) {
+            const pct = scf_inches === 0 ? 0 : ((scf_timer - scf_inches) / scf_inches) * 100;
+            compLine = `Timer vs Inches Δ: <b>${pct.toFixed(2)}%</b>`;
+          }
+
+          const flowFromTimerScfMin = effectiveElapsedMin && effectiveElapsedMin > 0 ? scf / effectiveElapsedMin : null;
+          const flowFromTimerGPM = flowFromTimerScfMin ? flowFromTimerScfMin / gas.scfPerGal : null;
+          const flowFromTimerLBPM = flowFromTimerGPM ? flowFromTimerGPM * gas.lbPerGal : null;
+
+          html += `<h2>Results — ${source}${modeLabel ? " • " + modeLabel : ""}</h2>`;
+          if (haveInches) {
+            html += `<p>Change (in): ${(end - start).toFixed(2)}</p>`;
+            if (tankType === "laydown" && (Number.isFinite(usedD) || Number.isFinite(cylD))) {
+              html += `<p>Diameter used: <b>${(Number.isFinite(cylD) ? cylD : usedD).toFixed(2)} in</b>${estNote || ""}</p>`;
+            }
+            if (Number.isFinite(scfPerInchShown)) html += `<p>Approx. SCF per inch (local): ${scfPerInchShown.toFixed(2)}</p>`;
+          }
+          if (compLine) html += `<p>${compLine}</p>`;
+
+          html += `<hr>`;
+          html += `<p><b>Total SCF (official):</b> ${scf.toFixed(2)}</p>`;
+          html += `<p><b>Gallons (~SCF ÷ ${gas.scfPerGal}):</b> ${gallons.toFixed(2)}</p>`;
+          html += `<p><b>Pounds (Gallons × ${gas.lbPerGal}):</b> ${poundsFromGallons.toFixed(2)}</p>`;
+          html += `<p><b>Pounds (SCF ÷ ${gas.scfPerLb}):</b> ${poundsFromSCF.toFixed(2)}</p>`;
+          html += `<p>Timer: <span class="mono">${elapsedMs ? fmtTime(elapsedMs) : "—"}</span>`;
+          if (Number.isFinite(flowVal) && effectiveElapsedMin) {
+            const entered = isLbMode() ? `${flowVal.toFixed(1)} lb/min` : `${flowVal.toFixed(1)} gal/min`;
+            html += ` &nbsp; | &nbsp; Entered Flow: <span class="mono">${entered}</span>`;
+          }
+          if (flowFromTimerGPM && effectiveElapsedMin) {
+            html += ` &nbsp; | &nbsp; Flow from timer + result: <span class="mono">${flowFromTimerGPM.toFixed(1)} gal/min</span>`;
+            html += ` &nbsp; (<span class="mono">${flowFromTimerLBPM.toFixed(1)} lb/min</span>)`;
+          }
+          html += `</p>`;
+
+          output.innerHTML = html;
+
+          // push to Split page input
+          if (typeof window.setAutoSCFTotal === "function") {
+            window.setAutoSCFTotal(Number(scf.toFixed(0)));
+          }
+        };
+
+        /* ----- CLEAR (exposed for button onclick) ----- */
+        window.clearForm = function () {
+          ["fullInches", "fullCap", "startInches", "endInches", "flowValue", "geoDiameter", "geoLength"].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+          });
+          const capSel = document.getElementById("capUnit");
+          if (capSel) capSel.value = "scf";
+          const chk1 = document.getElementById("chkEstimateD");
+          if (chk1) chk1.checked = false;
+          const chk2 = document.getElementById("useTimerPrimary");
+          if (chk2) chk2.checked = false;
+          const out = document.getElementById("output");
+          if (out) out.innerHTML = "Enter values and tap Calculate.";
+          if ($elapsed) $elapsed.textContent = "Elapsed: 00:00:00";
+          if (intervalId) clearInterval(intervalId);
+          t0 = null;
+          t1 = null;
+          intervalId = null;
+          if (unitSwitch) {
+            unitSwitch.classList.remove("on");
+            unitSwitch.setAttribute("aria-checked", "false");
+          }
+          if ($btnStart) $btnStart.disabled = false;
+          if ($btnStop) $btnStop.disabled = true;
+          setGeoVisibility();
+        };
+      })();
+    </script>
+    <!-- === SCRIPTS: CALCULATOR END === -->
+
+    <!-- === SCRIPTS: SPLIT (FULLY FIXED VERSION) === -->
+<script>
+(function () {
+
+  // Gas data
+  const gases = {
+    LIN: { scfPerLb: 13.8, scfPerGal: 93.1 },
+    LOX: { scfPerLb: 12.06, scfPerGal: 115.0 },
+    LAR: { scfPerLb: 9.3, scfPerGal: 87.3 },
+  };
+
+  const $ = id => document.getElementById(id);
+  const num = v => parseFloat(v) || 0;
+
+  // HTML bindings matching your page exactly
+  const input = $("splitInput");
+  const inputType = $("splitInputType");
+  const gasSel = $("splitGas");
+  const updateBtn = $("splitUpdate");
+  const converted = $("splitConverted");
+  const totalSCF = $("splitTotalSCF");
+
+  const t1Full = $("t1Full");
+  const t1Gal = $("t1Gal");
+  const t1Start = $("t1Start");
+  const t1End = $("t1End");
+  const t1SCF = $("t1SCF");
+
+  const t2Full = $("t2Full");
+  const t2Gal = $("t2Gal");
+  const t2Start = $("t2Start");
+  const t2End = $("t2End");
+  const t2SCF = $("t2SCF");
+
+  const calcBtn = $("splitCalc");
+  const clearBtn = $("splitClear");
+  const err = $("splitErr");
+
+  /* ----------------------------
+     Convert Pounds ⇄ SCF
+  -----------------------------*/
+  function updateSCF() {
+    const amt = num(input.value);
+    if (!amt) {
+      converted.textContent = "";
+      totalSCF.value = "";
+      checkReady();
+      return;
+    }
+
+    const gas = gases[gasSel.value];
+
+    let scf = 0;
+    if (inputType.value === "POUNDS") {
+      scf = amt * gas.scfPerLb;
+      converted.textContent = `Converted: ${scf.toLocaleString()} SCF`;
+    } else {
+      scf = amt;
+      converted.textContent = `Using: ${scf.toLocaleString()} SCF`;
+    }
+
+    totalSCF.value = scf.toLocaleString();
+    checkReady();
+  }
+
+  updateBtn.addEventListener("click", updateSCF);
+
+  /* ----------------------------
+     Unlock Calculate button when ready
+  -----------------------------*/
+  function checkReady() {
+    const scf = num(totalSCF.value.replace(/,/g, ""));
+    const s1 = num(t1Start.value);
+    const e1 = num(t1End.value);
+    const s2 = num(t2Start.value);
+    const e2 = num(t2End.value);
+
+    const ready =
+      scf > 0 &&
+      e1 > s1 &&
+      e2 > s2;
+
+    calcBtn.disabled = !ready;
+    if (ready) err.style.display = "none";
+  }
+
+  document.addEventListener("input", checkReady);
+
+  /* ----------------------------
+     Split Calculation (Proportional Method - Version B)
+  -----------------------------*/
+  function calcSplit() {
+    const scf = num(totalSCF.value.replace(/,/g, ""));
+    const d1 = Math.max(0, num(t1End.value) - num(t1Start.value));
+    const d2 = Math.max(0, num(t2End.value) - num(t2Start.value));
+
+    if (!(scf > 0 && d1 > 0 && d2 > 0)) {
+      err.style.display = "block";
+      return;
+    }
+
+    const total = d1 + d2;
+
+    let a1 = Math.round((d1 / total) * scf);
+    let a2 = scf - a1; // ensures perfect total match
+
+    t1SCF.value = a1.toLocaleString();
+    t2SCF.value = a2.toLocaleString();
+    err.style.display = "none";
+  }
+
+  calcBtn.addEventListener("click", calcSplit);
+
+  /* ----------------------------
+     Clear
+  -----------------------------*/
+  clearBtn.addEventListener("click", () => {
+    [
+      input, totalSCF, converted,
+      t1Full, t1Gal, t1Start, t1End, t1SCF,
+      t2Full, t2Gal, t2Start, t2End, t2SCF
+    ].forEach(el => el.value = "");
+
+    err.style.display = "none";
+    calcBtn.disabled = true;
+  });
+
+})();
+</script>
+<!-- === SCRIPTS: SPLIT END === -->
+
+<!-- === PAGE: RESERVE START === -->
+<section class="pane" id="pane-reserve">
+  <div class="page split">
+    <h1>Cryo Reserve Calculator</h1>
+
+    <!-- INPUT AMOUNT + TYPE -->
+    <div class="row2" style="margin-top:12px;">
+      <div>
+        <div class="muted">Amount</div>
+        <input id="resAmount" type="number" placeholder="Enter Pounds or SCF" inputmode="numeric" />
+      </div>
+
+      <div>
+        <div class="muted">Input Type</div>
+        <select id="resInputType">
+          <option value="POUNDS">Pounds (COA)</option>
+          <option value="SCF">SCF</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- GAS + UPDATE -->
+    <div class="row2" style="margin-top:10px;">
+      <div>
+        <div class="muted">Gas</div>
+        <select id="resGas">
+          <option value="LIN">LIN (Nitrogen)</option>
+          <option value="LOX">LOX (Oxygen)</option>
+          <option value="LAR">LAR (Argon)</option>
+        </select>
+      </div>
+
+      <div style="display:flex; align-items:flex-end;">
+        <button id="resUpdate" type="button" class="btn-primary">Update</button>
+      </div>
+    </div>
+
+    <div id="resHint" class="muted" style="margin-top:6px;"></div>
+
+    <!-- TANK INPUTS -->
+    <div style="margin-top:16px;">
+      <div class="muted"><b>Tank 1 SCF</b></div>
+      <input id="resT1" type="number" placeholder="0" />
+    </div>
+
+    <div style="margin-top:12px;">
+      <div class="muted"><b>Tank 2 SCF</b></div>
+      <input id="resT2" type="number" placeholder="0" />
+    </div>
+
+    <div style="margin-top:12px;">
+      <div class="muted"><b>Tank 3 SCF</b></div>
+      <input id="resT3" type="number" placeholder="0" />
+    </div>
+
+    <div style="margin-top:12px;">
+      <div class="muted"><b>Tank 4 SCF</b></div>
+      <input id="resT4" type="number" placeholder="0" />
+    </div>
+
+    <!-- REMAINING -->
+    <div style="margin-top:16px;">
+      <div class="muted"><b>Remaining SCF</b></div>
+      <input id="resRemaining" type="text" placeholder="0" readonly />
+    </div>
+
+    <div class="sticky-actions">
+      <button id="resClear" class="btn-primary" type="button">Clear</button>
+      <button class="btn-ghost" type="button" onclick="window.goToCalc()">← Home</button>
+    </div>
+  </div>
+</section>
+<!-- === PAGE: RESERVE END === -->
+
+<!-- === SCRIPTS: RESERVE START === -->
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const toNum = (v) => {
+    const n = parseFloat(v);
+    return isFinite(n) ? n : 0;
+  };
+
+  // Tank inputs
+  const resT1 = $("resT1"),
+        resT2 = $("resT2"),
+        resT3 = $("resT3"),
+        resT4 = $("resT4");
+
+  let maxSCF = 0;
+
+  /* ----------------------------------------
+     UPDATE BUTTON — POUNDS → SCF or SCF direct
+  -----------------------------------------*/
+  $("resUpdate").addEventListener("click", () => {
+    const amt = toNum($("resAmount").value);
+    const type = $("resInputType").value;
+    const gasKey = $("resGas").value;
+    const gas = window.gases?.[gasKey];
+
+    if (!amt || !gas) {
+      $("resHint").textContent = "";
+      $("resRemaining").value = 0;
+      maxSCF = 0;
+      return;
+    }
+
+    let scf = 0;
+
+    if (type === "POUNDS") {
+      scf = amt * gas.scfPerLb;
+    } else {
+      scf = amt; // user entered SCF directly
+    }
+
+    maxSCF = Math.min(999999, Math.round(scf));
+
+    $("resHint").textContent = `Total SCF: ${maxSCF.toLocaleString()}`;
+    $("resRemaining").value = maxSCF.toLocaleString();
+
+    recomputeRemaining();
+  });
+
+  /* ----------------------------------------
+     RECOMPUTE REMAINING SCF (4 tanks)
+  -----------------------------------------*/
+  function recomputeRemaining(lastChanged) {
+    const t1 = toNum(resT1.value);
+    const t2 = toNum(resT2.value);
+    const t3 = toNum(resT3.value);
+    const t4 = toNum(resT4.value);
+
+    let used = t1 + t2 + t3 + t4;
+
+    if (maxSCF > 0 && used > maxSCF && lastChanged) {
+      const others = used - toNum(lastChanged.value);
+      const allow = Math.max(0, maxSCF - others);
+      lastChanged.value = allow;
+      used = others + allow;
+    }
+
+    let remain = Math.max(0, maxSCF - used);
+    $("resRemaining").value = remain.toLocaleString();
+
+    updateTruckInches(remain);
+  }
+
+  [resT1, resT2, resT3, resT4].forEach((el) => {
+    el.addEventListener("input", (e) => {
+      if (toNum(e.target.value) < 0) e.target.value = 0;
+      recomputeRemaining(e.target);
+    });
+  });
+
+  /* ----------------------------------------
+     TRUCK INCHES CALC
+  -----------------------------------------*/
+  function updateTruckInches(remaining) {
+    const full = toNum($("resTruckFullIn").value);
+    if (!full || maxSCF <= 0) {
+      $("resTruckRemainIn").value = "";
+      return;
+    }
+
+    const ratio = remaining / maxSCF;
+    $("resTruckRemainIn").value = Math.round(full * ratio);
+  }
+
+  $("resTruckFullIn").addEventListener("input", () => recomputeRemaining());
+
+  /* ----------------------------------------
+     CLEAR ALL
+  -----------------------------------------*/
+  $("resClear").addEventListener("click", () => {
+    ["resAmount", "resT1", "resT2", "resT3", "resT4", "resTruckFullIn"]
+      .forEach((id) => ($(id).value = ""));
+
+    $("resTruckRemainIn").value = "";
+    $("resHint").textContent = "";
+    $("resRemaining").value = "0";
+    maxSCF = 0;
+  });
+
+})();
+</script>
+<!-- === SCRIPTS: RESERVE END === -->
+
+    <!-- === SCRIPTS: TESTS START === -->
+    <script>
+      /* Minimal inline tests (run with ?test=1) */
+      (function () {
+        if (!/([?&])test=1(?!\d)/.test(location.search)) return;
+        console.log("[TEST] Starting UI nav tests");
+        try {
+          console.assert(typeof window.goToSplit === "function", "goToSplit should be a function");
+          console.assert(typeof window.goToReserve === "function", "goToReserve should be a function");
+          console.assert(typeof window.goToCalc === "function", "goToCalc should be a function");
+          window.goToSplit();
+          setTimeout(() => {
+            console.assert(document.getElementById("panes").getAttribute("data-index") === "1", "Should be on Split pane");
+            window.goToReserve();
+            setTimeout(() => {
+              console.assert(document.getElementById("panes").getAttribute("data-index") === "2", "Should be on Reserve pane");
+              window.goToCalc();
+              setTimeout(() => {
+                console.assert(document.getElementById("panes").getAttribute("data-index") === "0", "Should be on Calc pane");
+                console.log("[TEST] Navigation tests passed");
+              }, 50);
+            }, 50);
+          }, 50);
+        } catch (e) {
+          console.error("[TEST] Failed", e);
+        }
+      })();
+    </script>
+    <!-- === SCRIPTS: TESTS END === -->
+    <!-- === SCRIPTS: NAV (Swipe + Buttons) START === -->
+    <script>
+      (function () {
+        const panes = document.getElementById("panes");
+        const viewport = document.getElementById("viewport");
+        const dots = [document.getElementById("d0"), document.getElementById("d1"), document.getElementById("d2")];
+
+        let index = Number(panes?.dataset.index || 0);
+
+        function setIndex(i) {
+          index = Math.max(0, Math.min(2, i));
+          if (panes) panes.setAttribute("data-index", String(index));
+          dots.forEach((d, k) => {
+            if (d) d.classList.toggle("active", k === index);
+          });
+        }
+
+        // Expose for buttons
+        window.goToCalc = () => setIndex(0);
+        window.goToSplit = () => setIndex(1);
+        window.goToReserve = () => setIndex(2);
+
+        // Swipe handling
+        let startX = 0,
+          startY = 0,
+          startTime = 0;
+        const THRESHOLD = 35; // min X distance
+        const RESTRAINT = 80; // max Y drift
+        const ALLOWED = 600; // max time (ms)
+
+        viewport?.addEventListener(
+          "touchstart",
+          (e) => {
+            const t = e.changedTouches[0];
+            startX = t.pageX;
+            startY = t.pageY;
+            startTime = Date.now();
+          },
+          { passive: true }
+        );
+
+        viewport?.addEventListener(
+          "touchend",
+          (e) => {
+            const t = e.changedTouches[0];
+            const distX = t.pageX - startX;
+            const distY = t.pageY - startY;
+            const elapsed = Date.now() - startTime;
+
+            if (elapsed <= ALLOWED && Math.abs(distX) >= THRESHOLD && Math.abs(distY) <= RESTRAINT) {
+              if (distX < 0) setIndex(index + 1); // swipe left → next pane
+              else setIndex(index - 1); // swipe right → prev pane
+            }
+          },
+          { passive: true }
+        );
+
+        // Keyboard support
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowLeft") setIndex(index - 1);
+          if (e.key === "ArrowRight") setIndex(index + 1);
+        });
+
+        // Initialize
+        setIndex(index);
+      })();
+    </script>
+    <!-- === SCRIPTS: NAV (Swipe + Buttons) END === -->
+
+    <!-- === SCRIPTS: LOCALSTORAGE PERSISTENCE START === -->
+    <script>
+      (function () {
+        const STORAGE_PREFIX = "cryoCalc_";
+
+        // List of all form fields to persist (ID-based)
+        const PERSIST_FIELDS = [
+          // Calculator pane
+          "tankType",
+          "fullInches",
+          "geoDiameter",
+          "geoLength",
+          "fullCap",
+          "capUnit",
+          "gas",
+          "startInches",
+          "endInches",
+          "flowValue",
+          "chkEstimateD",
+          "useTimerPrimary",
+          // Split pane
+          "totalScf",
+          "t1unit",
+          "t1Cap",
+          "t1s",
+          "t1e",
+          "t2unit",
+          "t2Cap",
+          "t2s",
+          "t2e",
+          // Reserve pane
+          "resGallons",
+          "resGas",
+          "resTruckFullIn",
+          "resT1",
+          "resT2",
+          "resT3",
+        ];
+
+        // Save value to localStorage
+        function saveField(id, value) {
+          try {
+            localStorage.setItem(STORAGE_PREFIX + id, value);
+          } catch (e) {
+            console.warn("localStorage save failed for", id, e);
+          }
+        }
+
+        // Load value from localStorage
+        function loadField(id) {
+          try {
+            return localStorage.getItem(STORAGE_PREFIX + id);
+          } catch (e) {
+            console.warn("localStorage load failed for", id, e);
+            return null;
+          }
+        }
+
+        // Clear all persisted fields
+        function clearAllFields() {
+          PERSIST_FIELDS.forEach((id) => {
+            try {
+              localStorage.removeItem(STORAGE_PREFIX + id);
+            } catch (e) {}
+          });
+        }
+
+        // Initialize persistence for all fields
+        PERSIST_FIELDS.forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+
+          // Load saved value on page load
+          const saved = loadField(id);
+          if (saved !== null) {
+            if (el.type === "checkbox") {
+              el.checked = saved === "true";
+            } else {
+              el.value = saved;
+            }
+            // Trigger change event to update any dependent UI
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+
+          // Save on change
+          const saveHandler = () => {
+            if (el.type === "checkbox") {
+              saveField(id, el.checked ? "true" : "false");
+            } else {
+              saveField(id, el.value);
+            }
+          };
+
+          el.addEventListener("input", saveHandler);
+          el.addEventListener("change", saveHandler);
+        });
+
+        // Special handling for unitSwitch toggle
+        const unitSwitch = document.getElementById("unitSwitch");
+        if (unitSwitch) {
+          const savedUnit = loadField("unitSwitch");
+          if (savedUnit === "on") {
+            unitSwitch.classList.add("on");
+            unitSwitch.setAttribute("aria-checked", "true");
+          }
+
+          // Save when toggled (assuming there's a click handler already defined)
+          const observer = new MutationObserver(() => {
+            saveField("unitSwitch", unitSwitch.classList.contains("on") ? "on" : "off");
+          });
+          observer.observe(unitSwitch, { attributes: true, attributeFilter: ["class"] });
+        }
+
+        // Hook into Clear buttons to also clear localStorage
+        const clearBtn = document.querySelector("#pane-calc button.btn-clear");
+        if (clearBtn) {
+          const originalClearHandler = clearBtn.onclick;
+          clearBtn.addEventListener("click", () => {
+            // Clear calculator-related localStorage
+            [
+              "tankType",
+              "fullInches",
+              "geoDiameter",
+              "geoLength",
+              "fullCap",
+              "capUnit",
+              "gas",
+              "startInches",
+              "endInches",
+              "flowValue",
+              "chkEstimateD",
+              "useTimerPrimary",
+              "unitSwitch",
+            ].forEach((id) => {
+              try {
+                localStorage.removeItem(STORAGE_PREFIX + id);
+              } catch (e) {}
+            });
+          });
+        }
+
+        const clearSplitBtn = document.getElementById("clearSplit");
+        if (clearSplitBtn) {
+          clearSplitBtn.addEventListener("click", () => {
+            ["totalScf", "t1unit", "t1Cap", "t1s", "t1e", "t2unit", "t2Cap", "t2s", "t2e"].forEach((id) => {
+              try {
+                localStorage.removeItem(STORAGE_PREFIX + id);
+              } catch (e) {}
+            });
+          });
+        }
+
+        const resClearBtn = document.getElementById("resClear");
+        if (resClearBtn) {
+          resClearBtn.addEventListener("click", () => {
+            ["resGallons", "resGas", "resTruckFullIn", "resT1", "resT2", "resT3"].forEach((id) => {
+              try {
+                localStorage.removeItem(STORAGE_PREFIX + id);
+              } catch (e) {}
+            });
+          });
+        }
+
+        // Logout function for all logout buttons
+        const handleLogout = () => {
+          localStorage.removeItem("cryo_auth");
+          // Reload parent window (index.html) to show login modal
+          if (window.parent && window.parent !== window) {
+            window.parent.location.reload();
+          } else {
+            window.location.reload();
+          }
+        };
+
+        // Add logout handler to all logout buttons
+        const logoutBtn = document.getElementById("logout");
+        const logoutCalcBtn = document.getElementById("logoutCalc");
+        const logoutSplitBtn = document.getElementById("logoutSplit");
+
+        if (logoutBtn) logoutBtn.addEventListener("click", handleLogout);
+        if (logoutCalcBtn) logoutCalcBtn.addEventListener("click", handleLogout);
+        if (logoutSplitBtn) logoutSplitBtn.addEventListener("click", handleLogout);
+      })();
+    </script>
+    <!-- === SCRIPTS: LOCALSTORAGE PERSISTENCE END === -->
+  </body>
+</html>

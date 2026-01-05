@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cryo Calculator – Records</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Shared styles -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    body {
+      padding: 16px;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      vertical-align: top;
+    }
+
+    th {
+      text-align: left;
+      background: #f5f5f5;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:hover {
+      background: #fafafa;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      display: inline-block;
+    }
+
+    .badge.local {
+      background: #ffe7c2;
+    }
+
+    .badge.sync {
+      background: #d4f5dd;
+    }
+
+    .muted {
+      color: #666;
+      font-size: 13px;
+    }
+
+    .actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Saved Records</h1>
+  <div class="muted">Local + synced records from Google Sheets</div>
+
+  <!-- FILTERS -->
+  <div class="filters">
+    <label>
+      Type
+      <select id="filterType">
+        <option value="all">All</option>
+        <option value="calc">Calculator</option>
+        <option value="split">Split</option>
+        <option value="reserve">Reserve</option>
+      </select>
+    </label>
+
+    <label>
+      Gas
+      <select id="filterGas">
+        <option value="">All</option>
+        <option value="LIN">LIN</option>
+        <option value="LOX">LOX</option>
+        <option value="LAR">LAR</option>
+      </select>
+    </label>
+
+    <label>
+      From Date
+      <input type="date" id="filterFrom" />
+    </label>
+
+    <label>
+      To Date
+      <input type="date" id="filterTo" />
+    </label>
+  </div>
+
+  <!-- TABLE -->
+  <table id="recordsTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Gas</th>
+        <th>Details</th>
+        <th>Result</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="actions">
+    <button class="btn-ghost" onclick="window.location.href='index.html'">← Back</button>
+  </div>
+
+  <!-- SHARED API -->
+  <script src="api.js"></script>
+
+  <!-- RECORDS LOGIC -->
+  <script>
+    const tableBody = document.querySelector("#recordsTable tbody");
+
+    let allRecords = [];
+
+    // -------------------------------
+    // LOAD RECORDS
+    // -------------------------------
+    document.addEventListener("DOMContentLoaded", async () => {
+      const cloud = await fetchRecords("all", 300);
+
+      const localCalc = JSON.parse(
+        localStorage.getItem(CRYO_API.STORAGE_KEYS.CALC)
+      ) || [];
+
+      const localSplit = JSON.parse(
+        localStorage.getItem(CRYO_API.STORAGE_KEYS.SPLIT)
+      ) || [];
+
+      const localReserve = JSON.parse(
+        localStorage.getItem(CRYO_API.STORAGE_KEYS.RESERVE)
+      ) || [];
+
+      allRecords = [
+        ...normalize("calc", localCalc),
+        ...normalize("split", localSplit),
+        ...normalize("reserve", localReserve),
+        ...normalize("calc", cloud?.calc?.records || [], true),
+        ...normalize("split", cloud?.split?.records || [], true),
+        ...normalize("reserve", cloud?.reserve?.records || [], true)
+      ];
+
+      // newest first
+      allRecords.sort((a, b) =>
+        String(b.timestamp).localeCompare(String(a.timestamp))
+      );
+
+      applyFilters();
+    });
+
+    // -------------------------------
+    // NORMALIZE RECORDS
+    // -------------------------------
+    function normalize(type, list, synced = false) {
+      return list.map(r => ({
+        type,
+        gas: r.gas || "",
+        timestamp: r.timestamp,
+        details: r,
+        result: r.result_text || "",
+        source: synced || r.source === "sync" ? "sync" : "local"
+      }));
+    }
+
+    // -------------------------------
+    // FILTERING
+    // -------------------------------
+    document
+      .querySelectorAll(".filters select, .filters input")
+      .forEach(el => el.addEventListener("change", applyFilters));
+
+    function applyFilters() {
+      const type = filterType.value;
+      const gas = filterGas.value;
+      const from = filterFrom.value;
+      const to = filterTo.value;
+
+      let filtered = allRecords.filter(r => {
+        if (type !== "all" && r.type !== type) return false;
+        if (gas && r.gas !== gas) return false;
+
+        if (from && r.timestamp < from) return false;
+        if (to && r.timestamp > to + "T23:59:59") return false;
+
+        return true;
+      });
+
+      render(filtered);
+    }
+
+    // -------------------------------
+    // RENDER TABLE
+    // -------------------------------
+    function render(records) {
+      tableBody.innerHTML = "";
+
+      if (!records.length) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="muted">No records found</td>
+          </tr>`;
+        return;
+      }
+
+      records.forEach(r => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${formatDate(r.timestamp)}</td>
+          <td>${r.type.toUpperCase()}</td>
+          <td>${r.gas || "-"}</td>
+          <td class="muted">${formatDetails(r)}</td>
+          <td>${r.result}</td>
+          <td>
+            <span class="badge ${r.source}">
+              ${r.source === "sync" ? "Synced" : "Local"}
+            </span>
+          </td>
+        `;
+
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // -------------------------------
+    // FORMATTERS
+    // -------------------------------
+    function formatDate(ts) {
+      if (!ts) return "-";
+      return new Date(ts).toLocaleString();
+    }
+
+    function formatDetails(r) {
+      if (r.type === "calc") {
+        return `Inches ${r.details.start_inches} → ${r.details.end_inches}`;
+      }
+      if (r.type === "split") {
+        return `${r.details.amount_scf} SCF`;
+      }
+      if (r.type === "reserve") {
+        return `Reserve ${r.details.reserve_amount}`;
+      }
+      return "";
+    }
+  </script>
+</body>
+</html>
