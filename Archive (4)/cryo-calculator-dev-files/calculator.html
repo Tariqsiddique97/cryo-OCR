@@ -2411,7 +2411,7 @@
         };
 
         /* ----- API Configuration ----- */
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwwEX98Jgo6djkOqENe-2dWl-blam_6IOJaIeV5TYEc2-kPsV8_QI_9fMtCC_k5z7Tg/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwS1u8xCPIk5_o4RFYxbKekU-ZzPD9GuSjANnziIV32rsKxArCQMMsZ8_7pudLVPs0X/exec";
 
         function getAuth() {
           try {
@@ -3588,8 +3588,11 @@
     <!-- === SCRIPTS: OCR PSI CAPTURE START === -->
     <script>
       (function () {
-        // Gemini API Key (same as airgas reference)
-        const GEMINI_API_KEY = 'AIzaSyCQuNf48yYC7ylH8xst51bgGq_fwg-Zjhs';
+        // Use Apps Script API endpoint for OCR (API key is hidden server-side)
+        // Uses the same API_ENDPOINT from constant.js or inline definition
+        const OCR_API_ENDPOINT = typeof API_ENDPOINT !== 'undefined'
+          ? API_ENDPOINT
+          : "https://script.google.com/macros/s/AKfycbwS1u8xCPIk5_o4RFYxbKekU-ZzPD9GuSjANnziIV32rsKxArCQMMsZ8_7pudLVPs0X/exec";
 
         // DOM Elements
         const modal = document.getElementById('ocrModal');
@@ -3688,59 +3691,39 @@
           await runOcr();
         }
 
-        // Run OCR via Gemini API
+        // Run OCR via Apps Script API (Gemini API key hidden server-side)
         async function runOcr() {
           loadingDiv.classList.add('show');
           resultDiv.classList.remove('show', 'error');
 
           try {
-            const prompt = `You see a pressure gauge (PSI meter). Read the current pressure value indicated by the needle or digital display.
-
-Answer with exactly one line in this format: VALUE=123
-(only digits or digits with decimal, no units, no other text).
-
-If you cannot read the value clearly, respond with: VALUE=ERROR`;
-
-            const response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{
-                    parts: [
-                      { inline_data: { mime_type: 'image/jpeg', data: capturedImageBase64 } },
-                      { text: prompt }
-                    ]
-                  }]
-                })
-              }
-            );
-
-            if (!response.ok) {
-              const status = response.status;
-              if (status === 429) throw new Error('API quota exceeded. Please try again later.');
-              if (status === 503) throw new Error('AI service overloaded. Please retry.');
-              throw new Error(`API error: ${status}`);
-            }
+            // Simple fetch - Apps Script handles JSON body
+            const response = await fetch(OCR_API_ENDPOINT, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'text/plain'
+              },
+              body: JSON.stringify({
+                action: 'ocr',
+                image: capturedImageBase64,
+                fieldType: 'psi'
+              })
+            });
 
             const data = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            console.log('OCR raw response:', text);
-
-            // Parse value from response
-            detectedValue = parseOcrValue(text);
+            console.log('OCR API response:', data);
 
             loadingDiv.classList.remove('show');
 
-            if (detectedValue !== null) {
+            if (data.ok && data.value !== undefined) {
+              detectedValue = data.value;
               resultDiv.classList.add('show');
               resultDiv.classList.remove('error');
               resultValue.textContent = detectedValue;
               btnApply.disabled = false;
             } else {
               resultDiv.classList.add('show', 'error');
-              resultValue.textContent = 'Could not read PSI value. Please retake the photo with the gauge clearly visible.';
+              resultValue.textContent = data.error || 'Could not read PSI value. Please retake the photo with the gauge clearly visible.';
               btnApply.disabled = true;
             }
           } catch (err) {
@@ -3750,28 +3733,6 @@ If you cannot read the value clearly, respond with: VALUE=ERROR`;
             resultValue.textContent = err.message || 'OCR failed. Please try again.';
             btnApply.disabled = true;
           }
-        }
-
-        // Parse numeric value from OCR response
-        function parseOcrValue(text) {
-          if (!text) return null;
-
-          // Check for error response
-          if (text.toUpperCase().includes('ERROR')) return null;
-
-          // Try to extract VALUE=xxx format
-          const valueMatch = text.match(/VALUE\s*=\s*([0-9]+(?:\.[0-9]+)?)/i);
-          if (valueMatch) {
-            return parseFloat(valueMatch[1]);
-          }
-
-          // Fallback: extract any number
-          const numMatch = text.match(/\b([0-9]+(?:\.[0-9]+)?)\b/);
-          if (numMatch) {
-            return parseFloat(numMatch[1]);
-          }
-
-          return null;
         }
 
         // Apply value to target field

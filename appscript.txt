@@ -24,6 +24,9 @@ const CONFIG = {
   // Session duration
   TOKEN_TTL_SECONDS: 60 * 60 * 24 * 7, // 7 days
 
+  // Gemini API Key for OCR
+  GEMINI_API_KEY: "AIzaSyCQuNf48yYC7ylH8xst51bgGq_fwg-Zjhs",
+
   // Sheet names
   SHEETS: {
     USERS: "users",
@@ -151,6 +154,10 @@ function doPost(e) {
 
       case "delete":
         result = handleDelete_(body, true);
+        break;
+
+      case "ocr":
+        result = handleOcr_(body, true);
         break;
 
       default:
@@ -496,6 +503,144 @@ function handleDelete_(body, returnObject) {
   }
 }
 
+/** ====== OCR (GEMINI API) ====== **/
+/**
+ * Handle OCR request - extracts PSI value from gauge image
+ * POST { action: "ocr", image: "base64_image_data", fieldType: "psi" }
+ */
+function handleOcr_(body, returnObject) {
+  const imageBase64 = String(body.image || "");
+  const fieldType = String(body.fieldType || "psi").toLowerCase();
+
+  // Helper to return result based on returnObject flag
+  const respond = (obj, status) => {
+    obj.status = status || 200;
+    return returnObject ? obj : jsonResponse(obj, status);
+  };
+
+  if (!imageBase64) {
+    return respond({ ok: false, error: "Missing image data" }, 400);
+  }
+
+  // Build prompt based on field type
+  let prompt;
+  switch (fieldType) {
+    case "psi":
+    case "psi_analog":
+      prompt = `You see a pressure gauge (PSI meter). Read the current pressure value indicated by the needle or digital display.
+
+Answer with exactly one line in this format: VALUE=123
+(only digits or digits with decimal, no units, no other text).
+
+If you cannot read the value clearly, respond with: VALUE=ERROR`;
+      break;
+
+    case "level":
+      prompt = `You see a tank level gauge showing inches of water or liquid level. Read the current level value.
+
+Answer with exactly one line in this format: VALUE=123
+(only digits or digits with decimal, no units, no other text).
+
+If you cannot read the value clearly, respond with: VALUE=ERROR`;
+      break;
+
+    case "totalizer":
+      prompt = `You see a flow meter or totalizer display. Find and read the LARGE main TOTALIZER value (cumulative total).
+
+Answer with exactly one line in this format: VALUE=123456
+(only digits, no units, no other text).
+
+If you cannot read the value clearly, respond with: VALUE=ERROR`;
+      break;
+
+    default:
+      prompt = `Read the numeric value shown in this gauge or display.
+
+Answer with exactly one line in this format: VALUE=123
+(only digits or digits with decimal, no units, no other text).
+
+If you cannot read the value clearly, respond with: VALUE=ERROR`;
+  }
+
+  try {
+    // Call Gemini API
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+
+    const payload = {
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: "image/jpeg", data: imageBase64 } },
+          { text: prompt }
+        ]
+      }]
+    };
+
+    const options = {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(apiUrl, options);
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+
+    if (responseCode !== 200) {
+      safeAudit_("OCR_FAIL", { reason: "api_error", code: responseCode });
+      if (responseCode === 429) {
+        return respond({ ok: false, error: "API quota exceeded. Please try again later." }, 429);
+      }
+      if (responseCode === 503) {
+        return respond({ ok: false, error: "AI service overloaded. Please retry." }, 503);
+      }
+      return respond({ ok: false, error: `Gemini API error: ${responseCode}` }, 500);
+    }
+
+    const data = JSON.parse(responseText);
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    // Parse value from response
+    const value = parseOcrValue_(text);
+
+    if (value !== null) {
+      safeAudit_("OCR_OK", { fieldType, value });
+      return respond({ ok: true, value: value, raw: text });
+    } else {
+      safeAudit_("OCR_FAIL", { reason: "parse_error", raw: text });
+      return respond({ ok: false, error: "Could not read value from image", raw: text }, 422);
+    }
+
+  } catch (err) {
+    safeAudit_("OCR_FAIL", { reason: "exception", error: String(err) });
+    return respond({ ok: false, error: "OCR processing failed: " + String(err) }, 500);
+  }
+}
+
+/**
+ * Parse numeric value from Gemini OCR response
+ */
+function parseOcrValue_(text) {
+  if (!text) return null;
+
+  // Check for error response
+  if (text.toUpperCase().includes("ERROR")) return null;
+
+  // Try to extract VALUE=xxx format
+  const valueMatch = text.match(/VALUE\s*=\s*([0-9]+(?:\.[0-9]+)?)/i);
+  if (valueMatch) {
+    return parseFloat(valueMatch[1]);
+  }
+
+  // Fallback: extract any number
+  const numMatch = text.match(/\b([0-9]+(?:\.[0-9]+)?)\b/);
+  if (numMatch) {
+    return parseFloat(numMatch[1]);
+  }
+
+  return null;
+}
+
 /** ====== HELPERS: SHEET IO ====== **/
 function getSpreadsheet_() {
   if (CONFIG.SHEET_ID && String(CONFIG.SHEET_ID).trim()) {
@@ -590,7 +735,12 @@ function base64Url_(str) {
 /** ====== HELPERS: REQUEST / RESPONSE ====== **/
 function parseJsonBody_(e) {
   if (!e || !e.postData || !e.postData.contents) return {};
-  return JSON.parse(e.postData.contents);
+  try {
+    return JSON.parse(e.postData.contents);
+  } catch (err) {
+    // Handle text/plain content type
+    return {};
+  }
 }
 
 /**

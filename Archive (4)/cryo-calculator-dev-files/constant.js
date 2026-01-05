@@ -1,1 +1,1 @@
-const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwwEX98Jgo6djkOqENe-2dWl-blam_6IOJaIeV5TYEc2-kPsV8_QI_9fMtCC_k5z7Tg/exec";
+const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwS1u8xCPIk5_o4RFYxbKekU-ZzPD9GuSjANnziIV32rsKxArCQMMsZ8_7pudLVPs0X/exec";
