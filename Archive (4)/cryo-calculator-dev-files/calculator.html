@@ -578,6 +578,32 @@
         max-width: none;
       }
 
+      /* === Split Calculator - field widths (tablet only) === */
+      @media (min-width: 768px) {
+        /* Total Amount row - reduce field widths */
+        #pane-split #splitInput,
+        #pane-split #splitInputType {
+          width: 60%;
+        }
+        /* Gas Type - reduce width */
+        #pane-split #splitGas {
+          width: 60%;
+        }
+        /* Total SCF and Allocated SCF - half width */
+        #pane-split #splitTotalSCF,
+        #pane-split #t1SCF,
+        #pane-split #t2SCF {
+          width: calc(30% - 4px);
+        }
+
+        #pane-split #t1Full,
+         #pane-split #t1Gal,
+         #pane-split #t2Full,
+         #pane-split #t2Gal {
+          width: calc(59% - 0px);
+        }
+      }
+
       /* === OCR Modal Styles === */
       .ocr-modal {
         position: fixed;
