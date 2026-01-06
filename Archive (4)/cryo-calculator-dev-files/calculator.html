@@ -2451,7 +2451,7 @@
         };
 
         /* ----- API Configuration ----- */
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyt7uqk23eGu1YMz7YIXf_5Y_8221kllXQ1zN6x_H9vx_nzyRvWZdybnaHWzWkeVgBZ/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyfwMSUkS8IqCz8PCQLN6sW_GN6MVnNV7YJN3Ft3AqithkrqUwvrjHPnqL1aZkhVdHi/exec";
 
         function getAuth() {
           try {
@@ -3657,7 +3657,7 @@
         // Uses the same API_ENDPOINT from constant.js or inline definition
         const OCR_API_ENDPOINT = typeof API_ENDPOINT !== 'undefined'
           ? API_ENDPOINT
-          : "https://script.google.com/macros/s/AKfycbyt7uqk23eGu1YMz7YIXf_5Y_8221kllXQ1zN6x_H9vx_nzyRvWZdybnaHWzWkeVgBZ/exec";
+          : "https://script.google.com/macros/s/AKfycbyfwMSUkS8IqCz8PCQLN6sW_GN6MVnNV7YJN3Ft3AqithkrqUwvrjHPnqL1aZkhVdHi/exec";
 
         // DOM Elements
         const modal = document.getElementById('ocrModal');
@@ -3821,9 +3821,10 @@
                 detectedValue = null; // Clear single value
                 resultDiv.classList.add('show');
                 resultDiv.classList.remove('error');
-                // Show different message for digital meter (PSI only) vs both gauges
-                if (data.inches === null && data.psi !== null) {
-                  resultValue.textContent = `PSI: ${data.psi} (digital meter - enter inches manually)`;
+                // Show different message for digital meter (inches only) vs both gauges
+                if (data.inches !== null && data.psi === null) {
+                  // Digital meter like Bulk Asset Monitor - shows inches only
+                  resultValue.textContent = `Inches: ${data.inches} (digital meter - enter PSI manually)`;
                 } else {
                   const inchesText = data.inches !== null ? data.inches : '-';
                   const psiText = data.psi !== null ? data.psi : '-';
