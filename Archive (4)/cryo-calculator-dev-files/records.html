@@ -495,46 +495,56 @@
               .filter((s) => s);
           }
 
-          // Inject inches/PSI values if available in record but not already in result_text
-          const extraLines = [];
-          if ((record.start_inches || record.start_psi) && !text.includes("Starting (in)")) {
-            const inVal = record.start_inches || "-";
-            const psiVal = record.start_psi || "-";
-            extraLines.push(`Starting (in) / PSI: ${psiVal} | ${inVal}`);
+          // For CALC records: Extract Starting/Ending PSI lines and move them after "Change (in)"
+          const startingLines = [];
+          const endingLines = [];
+          finalParts = finalParts.filter(p => {
+            if (p.toLowerCase().includes("starting (in)") || p.toLowerCase().includes("starting(in)")) {
+              startingLines.push(p);
+              return false;
+            }
+            if (p.toLowerCase().includes("ending (in)") || p.toLowerCase().includes("ending(in)")) {
+              endingLines.push(p);
+              return false;
+            }
+            return true;
+          });
+
+          // Find "Change" line and insert Starting/Ending PSI right after it
+          const changeIndex = finalParts.findIndex(p => p.toLowerCase().includes("change"));
+          if (changeIndex !== -1 && (startingLines.length > 0 || endingLines.length > 0)) {
+            finalParts.splice(changeIndex + 1, 0, ...startingLines, ...endingLines);
+          } else if (startingLines.length > 0 || endingLines.length > 0) {
+            // Fallback: insert after first line
+            finalParts.splice(1, 0, ...startingLines, ...endingLines);
           }
-          if ((record.end_inches || record.end_psi) && !text.includes("Ending (in)")) {
-            const inVal = record.end_inches || "-";
-            const psiVal = record.end_psi || "-";
-            extraLines.push(`Ending (in) / PSI: ${psiVal} | ${inVal}`);
-          }
-          // Tank1 inches/PSI for split records
+
+          // Tank1/Tank2 inches/PSI for split records (inject if not in result_text)
+          const splitPsiLines = [];
           if ((record.tank1_start_inches || record.tank1_start_psi) && !text.includes("Tank1 Starting")) {
             const inVal = record.tank1_start_inches || "-";
             const psiVal = record.tank1_start_psi || "-";
-            extraLines.push(`Tank1 Starting (in) / PSI: ${psiVal} | ${inVal}`);
+            splitPsiLines.push(`Tank1 Starting (in) / PSI: ${psiVal} | ${inVal}`);
           }
           if ((record.tank1_end_inches || record.tank1_end_psi) && !text.includes("Tank1 Ending")) {
             const inVal = record.tank1_end_inches || "-";
             const psiVal = record.tank1_end_psi || "-";
-            extraLines.push(`Tank1 Ending (in) / PSI: ${psiVal} | ${inVal}`);
+            splitPsiLines.push(`Tank1 Ending (in) / PSI: ${psiVal} | ${inVal}`);
           }
-          // Tank2 inches/PSI for split records
           if ((record.tank2_start_inches || record.tank2_start_psi) && !text.includes("Tank2 Starting")) {
             const inVal = record.tank2_start_inches || "-";
             const psiVal = record.tank2_start_psi || "-";
-            extraLines.push(`Tank2 Starting (in) / PSI: ${psiVal} | ${inVal}`);
+            splitPsiLines.push(`Tank2 Starting (in) / PSI: ${psiVal} | ${inVal}`);
           }
           if ((record.tank2_end_inches || record.tank2_end_psi) && !text.includes("Tank2 Ending")) {
             const inVal = record.tank2_end_inches || "-";
             const psiVal = record.tank2_end_psi || "-";
-            extraLines.push(`Tank2 Ending (in) / PSI: ${psiVal} | ${inVal}`);
+            splitPsiLines.push(`Tank2 Ending (in) / PSI: ${psiVal} | ${inVal}`);
           }
 
-          // Insert extra lines after the first line (usually the title/result line)
-          if (extraLines.length > 0 && finalParts.length > 0) {
-            finalParts.splice(1, 0, ...extraLines);
-          } else if (extraLines.length > 0) {
-            finalParts = extraLines.concat(finalParts);
+          // Insert split PSI lines after first line
+          if (splitPsiLines.length > 0 && finalParts.length > 0) {
+            finalParts.splice(1, 0, ...splitPsiLines);
           }
 
           return finalParts.map((p) => `<span class="detail-line">${esc(p)}</span>`).join("");

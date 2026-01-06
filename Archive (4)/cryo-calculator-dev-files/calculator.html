@@ -2525,7 +2525,9 @@
             gas: document.getElementById("gas")?.value || "",
             flow_value: document.getElementById("flowValue")?.value || "",
             timer_elapsed: document.getElementById("elapsed")?.textContent || "",
-            result_text: cleanResultText(output.textContent).substring(0, 1000),
+            result_text: cleanResultText(output.textContent).substring(0, 800) + " • " +
+                   "Starting (in)/PSI: " + (document.getElementById("startPsi")?.value || "-") + " | " + (document.getElementById("startInches")?.value || "-") + " • " +
+                   "Ending (in)/PSI: " + (document.getElementById("endPsi")?.value || "-") + " | " + (document.getElementById("endInches")?.value || "-"),
             timestamp: new Date().toISOString()
           };
 
