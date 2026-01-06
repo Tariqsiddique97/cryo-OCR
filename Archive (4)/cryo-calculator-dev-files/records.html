@@ -258,6 +258,9 @@
             <button class="ghost" type="button" onclick="window.open('calculator.html','_self')">← Back to Calculator</button>
             <button class="ghost" id="btnPrint" type="button">Print</button>
             <button class="btn" id="btnRefresh" type="button">Refresh</button>
+            <button class="btn btn-danger" id="btnDeleteSelected" type="button" style="background: #dc2626; color: white; display: none">
+              Delete Selected
+            </button>
             <button class="btn" id="btnLogout" type="button" style="background: #dc2626; color: white">Logout</button>
           </div>
         </div>
@@ -287,7 +290,9 @@
           <b>SAVE_ENDPOINT</b>
           .
         </div> -->
-        <div class="hold-hint">Tip: Press and hold a record to delete it.</div>
+        <div class="hold-hint">
+          Tip: Select records with checkboxes and click "Delete Selected" to delete multiple, or press and hold a record to delete one.
+        </div>
       </div>
     </div>
 
@@ -325,11 +330,13 @@
         const selectAllCheckbox = document.getElementById("selectAll");
 
         // API Endpoint
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwS1u8xCPIk5_o4RFYxbKekU-ZzPD9GuSjANnziIV32rsKxArCQMMsZ8_7pudLVPs0X/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyTMm85HJXTTz4S8crTn2GCS7Mw4Fjfusoz1RTh1q2LQAPNwmQBEiE4ojK9WdOXw159/exec";
 
         // Store records and pending delete
         let allRecords = [];
         let pendingDeleteRecord = null;
+        let pendingBulkDelete = []; // For bulk delete
+        let isBulkDeleteMode = false;
         let holdTimer = null;
         const HOLD_DURATION = 800; // ms to hold before delete prompt
 
@@ -457,6 +464,9 @@
           allRecords = records;
           if (!records || records.length === 0) {
             rowsEl.innerHTML = '<tr><td colspan="5" class="muted">No saved records yet.</td></tr>';
+            // Reset checkbox and button state for empty records
+            selectAllCheckbox.checked = false;
+            updateSelectAllState();
             return;
           }
           rowsEl.innerHTML = records
@@ -466,8 +476,8 @@
               const gas = esc(r.gas || "");
               const details = formatDetailsVertical(r.result_text, r);
               const recordId = esc(r.record_id || idx);
-              return `<tr class="record-row print-selected" data-record-id="${recordId}" data-record-type="${type}" data-index="${idx}">
-        <td class="checkbox-col"><input type="checkbox" class="print-checkbox row-checkbox" checked></td>
+              return `<tr class="record-row" data-record-id="${recordId}" data-record-type="${type}" data-index="${idx}">
+        <td class="checkbox-col"><input type="checkbox" class="print-checkbox row-checkbox"></td>
         <td>${ts}</td>
         <td><span class="pill">${type}</span></td>
         <td>${gas}</td>
@@ -478,6 +488,10 @@
 
           // Setup event listeners for new rows
           setupRowListeners();
+
+          // Reset select all checkbox and update button state
+          selectAllCheckbox.checked = false;
+          updateSelectAllState();
         }
 
         function setupRowListeners() {
@@ -551,9 +565,21 @@
         }
 
         function showDeleteModal() {
-          // Reset modal to default state
+          // Reset modal to default state (single delete)
+          isBulkDeleteMode = false;
           deleteModalTitle.textContent = "Delete Record?";
           deleteModalText.textContent = "Are you sure you want to delete this record? This action cannot be undone.";
+          deleteModalButtons.style.display = "flex";
+          deleteModal.classList.add("show");
+        }
+
+        function showBulkDeleteModal(count) {
+          // Set modal for bulk delete
+          isBulkDeleteMode = true;
+          deleteModalTitle.textContent = `Delete ${count} Record${count > 1 ? "s" : ""}?`;
+          deleteModalText.textContent = `Are you sure you want to delete ${count} selected record${
+            count > 1 ? "s" : ""
+          }? This action cannot be undone.`;
           deleteModalButtons.style.display = "flex";
           deleteModal.classList.add("show");
         }
@@ -564,15 +590,28 @@
             pendingDeleteRecord._rowElement.classList.remove("selected-for-delete");
           }
           pendingDeleteRecord = null;
+          pendingBulkDelete = [];
+          isBulkDeleteMode = false;
+          // Remove any selected-for-delete highlights
+          document.querySelectorAll(".selected-for-delete").forEach((row) => {
+            row.classList.remove("selected-for-delete");
+          });
         }
 
         function showDeletingState() {
+          const count = isBulkDeleteMode ? pendingBulkDelete.length : 1;
           deleteModalTitle.textContent = "Deleting...";
-          deleteModalText.textContent = "Please wait while the record is being deleted.";
+          deleteModalText.textContent = `Please wait while ${count > 1 ? count + " records are" : "the record is"} being deleted.`;
           deleteModalButtons.style.display = "none";
         }
 
         async function deleteRecord() {
+          // Handle bulk delete
+          if (isBulkDeleteMode && pendingBulkDelete.length > 0) {
+            await deleteBulkRecords();
+            return;
+          }
+
           if (!pendingDeleteRecord) return;
 
           const record = pendingDeleteRecord;
@@ -614,11 +653,66 @@
           }
         }
 
+        async function deleteBulkRecords() {
+          if (pendingBulkDelete.length === 0) return;
+
+          // Show deleting state
+          showDeletingState();
+
+          try {
+            const res = await fetch(API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain",
+              },
+              body: JSON.stringify({
+                action: "deleteBulk",
+                records: pendingBulkDelete.map((r) => ({ type: r.type, record_id: r.record_id })),
+                token: auth.token,
+              }),
+              redirect: "follow",
+            });
+
+            const data = await res.json();
+
+            if (!data.ok) {
+              hideDeleteModal();
+              showErr(data.error || "Failed to delete records.");
+              return;
+            }
+
+            // Remove deleted records from local array
+            const deletedIds = new Set(data.deleted.map((d) => d.record_id));
+            allRecords = allRecords.filter((r) => !deletedIds.has(r.record_id));
+
+            // Show result message if some failed
+            if (data.failed && data.failed.length > 0) {
+              showErr(`Deleted ${data.deleted.length} record(s). ${data.failed.length} failed to delete.`);
+            }
+
+            render(allRecords);
+            hideDeleteModal();
+          } catch (err) {
+            console.error("Bulk delete error:", err);
+            hideDeleteModal();
+            showErr("Network error. Please check your connection.");
+          }
+        }
+
         function updateSelectAllState() {
           const checkboxes = document.querySelectorAll(".row-checkbox");
           const checkedCount = document.querySelectorAll(".row-checkbox:checked").length;
           selectAllCheckbox.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
           selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+
+          // Show/hide Delete Selected button based on selection
+          const deleteSelectedBtn = document.getElementById("btnDeleteSelected");
+          if (checkedCount > 0) {
+            deleteSelectedBtn.style.display = "";
+            deleteSelectedBtn.textContent = `Delete Selected (${checkedCount})`;
+          } else {
+            deleteSelectedBtn.style.display = "none";
+          }
         }
 
         // Select all checkbox handler
@@ -633,6 +727,7 @@
               rows[i].classList.remove("print-selected");
             }
           });
+          updateSelectAllState(); // Update delete button visibility
         });
 
         // Delete modal buttons
@@ -704,6 +799,30 @@
         }
 
         document.getElementById("btnRefresh").addEventListener("click", load);
+        document.getElementById("btnDeleteSelected").addEventListener("click", () => {
+          // Get all selected records
+          const checkedRows = document.querySelectorAll(".record-row .row-checkbox:checked");
+          if (checkedRows.length === 0) {
+            showErr("Please select at least one record to delete.");
+            return;
+          }
+          clearErr();
+
+          // Collect records to delete and highlight them
+          pendingBulkDelete = [];
+          checkedRows.forEach((checkbox) => {
+            const row = checkbox.closest(".record-row");
+            const idx = parseInt(row.dataset.index);
+            if (!isNaN(idx) && allRecords[idx]) {
+              pendingBulkDelete.push(allRecords[idx]);
+              row.classList.add("selected-for-delete");
+            }
+          });
+
+          if (pendingBulkDelete.length > 0) {
+            showBulkDeleteModal(pendingBulkDelete.length);
+          }
+        });
         document.getElementById("btnPrint").addEventListener("click", () => {
           // Check if any records are selected
           const selectedCount = document.querySelectorAll(".row-checkbox:checked").length;

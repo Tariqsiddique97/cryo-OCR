@@ -156,6 +156,10 @@ function doPost(e) {
         result = handleDelete_(body, true);
         break;
 
+      case "deleteBulk":
+        result = handleDeleteBulk_(body, true);
+        break;
+
       case "ocr":
         result = handleOcr_(body, true);
         break;
@@ -501,6 +505,106 @@ function handleDelete_(body, returnObject) {
     safeAudit_("DELETE_FAIL", { record_id: recordId, user_id: userId, error: String(err) });
     return respond({ ok: false, error: "Failed to delete record" }, 500);
   }
+}
+
+/** ====== DELETE MULTIPLE RECORDS (BULK) ====== **/
+function handleDeleteBulk_(body, returnObject) {
+  const token = String(body.token || "");
+  const records = body.records || []; // Array of { type, record_id }
+
+  // Helper to return result based on returnObject flag
+  const respond = (obj, status) => {
+    obj.status = status || 200;
+    return returnObject ? obj : jsonResponse(obj, status);
+  };
+
+  if (!token) return respond({ ok: false, error: "Missing token" }, 401);
+  if (!Array.isArray(records) || records.length === 0) {
+    return respond({ ok: false, error: "Missing or empty records array" }, 400);
+  }
+
+  const auth = verifyToken_(token);
+  if (!auth.ok) return respond({ ok: false, error: auth.error }, 401);
+
+  const ss = getSpreadsheet_();
+  const userId = auth.payload.user_id;
+
+  const results = {
+    deleted: [],
+    failed: []
+  };
+
+  // Group records by type for efficiency
+  const byType = {};
+  records.forEach(r => {
+    const type = String(r.type || "").trim().toLowerCase();
+    const recordId = String(r.record_id || "").trim();
+    if (!type || !recordId) return;
+    if (!["calc", "split", "reserve"].includes(type)) return;
+    if (!byType[type]) byType[type] = [];
+    byType[type].push(recordId);
+  });
+
+  // Process each type
+  Object.keys(byType).forEach(type => {
+    const recordIds = byType[type];
+    const sheetName =
+      type === "calc" ? CONFIG.SHEETS.CALC :
+      type === "split" ? CONFIG.SHEETS.SPLIT :
+      CONFIG.SHEETS.RESERVE;
+
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      recordIds.forEach(id => results.failed.push({ record_id: id, type, error: "Sheet not found" }));
+      return;
+    }
+
+    const { headerMap, rows } = readSheetAsObjects_(sheet);
+    const recordIdColIndex = headerMap["record_id"];
+
+    if (recordIdColIndex === undefined) {
+      recordIds.forEach(id => results.failed.push({ record_id: id, type, error: "Missing record_id column" }));
+      return;
+    }
+
+    // Find rows to delete (collect row numbers in reverse order to avoid shifting issues)
+    const rowsToDelete = [];
+    recordIds.forEach(recordId => {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (String(row.record_id || "") === recordId) {
+          // Verify ownership
+          if (String(row.user_id || "") !== userId) {
+            results.failed.push({ record_id: recordId, type, error: "Unauthorized" });
+            return;
+          }
+          rowsToDelete.push({ rowNum: i + 2, recordId, type }); // +2 for header and 0-index
+          return;
+        }
+      }
+      results.failed.push({ record_id: recordId, type, error: "Not found" });
+    });
+
+    // Delete rows in reverse order (highest row first) to avoid index shifting
+    rowsToDelete.sort((a, b) => b.rowNum - a.rowNum);
+    rowsToDelete.forEach(item => {
+      try {
+        sheet.deleteRow(item.rowNum);
+        results.deleted.push({ record_id: item.recordId, type: item.type });
+      } catch (err) {
+        results.failed.push({ record_id: item.recordId, type: item.type, error: String(err) });
+      }
+    });
+  });
+
+  safeAudit_("DELETE_BULK_OK", { user_id: userId, deleted: results.deleted.length, failed: results.failed.length });
+
+  return respond({
+    ok: true,
+    message: `Deleted ${results.deleted.length} record(s)`,
+    deleted: results.deleted,
+    failed: results.failed
+  });
 }
 
 /** ====== OCR (GEMINI API) ====== **/
