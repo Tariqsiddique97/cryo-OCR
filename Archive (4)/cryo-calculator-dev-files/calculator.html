@@ -1572,7 +1572,7 @@
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
             <circle cx="12" cy="13" r="4"/>
           </svg>
-          Capture PSI Reading
+          Capture Gage Reading
         </h3>
         <p class="muted" style="margin: 0 0 12px;">
           Point your camera at the PSI gauge and tap <b>Capture</b> to auto-read the value.
@@ -1587,7 +1587,7 @@
 
         <!-- Controls -->
         <div class="ocr-controls">
-          <button id="ocrCapture" type="button" class="btn-primary" style="background: #16a34a;">📷 Capture & Read</button>
+          <button id="ocrCapture" type="button" class="btn-primary" style="background: #16a34a;">📷 Capture</button>
           <button id="ocrRetake" type="button" class="btn-ghost" style="display: none;">Retake</button>
         </div>
 
@@ -2526,8 +2526,8 @@
             flow_value: document.getElementById("flowValue")?.value || "",
             timer_elapsed: document.getElementById("elapsed")?.textContent || "",
             result_text: cleanResultText(output.textContent).substring(0, 800) + " • " +
-                   "Starting (in)/PSI: " + (document.getElementById("startPsi")?.value || "-") + " | " + (document.getElementById("startInches")?.value || "-") + " • " +
-                   "Ending (in)/PSI: " + (document.getElementById("endPsi")?.value || "-") + " | " + (document.getElementById("endInches")?.value || "-"),
+                   "Starting (in)/PSI: " + (document.getElementById("startInches")?.value || "-") + " | " + (document.getElementById("startPsi")?.value || "-") + " • " +
+                   "Ending (in)/PSI: " + (document.getElementById("endInches")?.value || "-") + " | " + (document.getElementById("endPsi")?.value || "-"),
             timestamp: new Date().toISOString()
           };
 
@@ -2607,10 +2607,10 @@
             notes: "T1: " + (document.getElementById("t1StartInches")?.value || "0") + "-" + (document.getElementById("t1EndInches")?.value || "0") + "in, " +
                    "T2: " + (document.getElementById("t2StartInches")?.value || "0") + "-" + (document.getElementById("t2EndInches")?.value || "0") + "in",
             result_text: "Total: " + (document.getElementById("splitTotalSCF")?.value || "0") + " SCF → Tank1: " + t1SCF + " SCF, Tank2: " + t2SCF + " SCF • " +
-                   "Tank1 Starting (in)/PSI: " + (document.getElementById("t1StartPsi")?.value || "-") + " | " + (document.getElementById("t1StartInches")?.value || "-") + " • " +
-                   "Tank1 Ending (in)/PSI: " + (document.getElementById("t1EndPsi")?.value || "-") + " | " + (document.getElementById("t1EndInches")?.value || "-") + " • " +
-                   "Tank2 Starting (in)/PSI: " + (document.getElementById("t2StartPsi")?.value || "-") + " | " + (document.getElementById("t2StartInches")?.value || "-") + " • " +
-                   "Tank2 Ending (in)/PSI: " + (document.getElementById("t2EndPsi")?.value || "-") + " | " + (document.getElementById("t2EndInches")?.value || "-"),
+                   "Tank1 Starting (in)/PSI: " + (document.getElementById("t1StartInches")?.value || "-") + " | " + (document.getElementById("t1StartPsi")?.value || "-") + " • " +
+                   "Tank1 Ending (in)/PSI: " + (document.getElementById("t1EndInches")?.value || "-") + " | " + (document.getElementById("t1EndPsi")?.value || "-") + " • " +
+                   "Tank2 Starting (in)/PSI: " + (document.getElementById("t2StartInches")?.value || "-") + " | " + (document.getElementById("t2StartPsi")?.value || "-") + " • " +
+                   "Tank2 Ending (in)/PSI: " + (document.getElementById("t2EndInches")?.value || "-") + " | " + (document.getElementById("t2EndPsi")?.value || "-"),
             timestamp: new Date().toISOString()
           };
 
