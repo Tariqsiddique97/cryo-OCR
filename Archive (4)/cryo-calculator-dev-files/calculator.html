@@ -600,7 +600,7 @@
          #pane-split #t1Gal,
          #pane-split #t2Full,
          #pane-split #t2Gal {
-          width: calc(59% - 0px);
+          width: calc(43% - 0px);
         }
         /* Starting PSI and Ending PSI - reduce field width */
         #pane-split .tank-section .row2 .field .input-with-camera {
@@ -979,32 +979,37 @@
         </div>
       </div>
 
-      <div class="row2">
-        <div class="field">
-          <div class="muted required-label">Starting PSI</div>
-          <div class="input-with-camera">
-            <input id="t1Start" type="number" placeholder="0" />
-            <button type="button" class="btn-camera" onclick="openOcrModal('t1Start')" title="Capture PSI from camera">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
-          </div>
+      <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
+        <div style="flex: 1; min-width: 55px;">
+          <label class="muted required-label">Start Inches:</label>
+          <input id="t1StartInches" type="number" placeholder="0" />
         </div>
-        <div class="field">
-          <div class="muted required-label">Ending PSI</div>
-          <div class="input-with-camera">
-            <input id="t1End" type="number" placeholder="0" />
-            <button type="button" class="btn-camera" onclick="openOcrModal('t1End')" title="Capture PSI from camera">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
-          </div>
+        <div style="flex: 1; min-width: 55px;">
+          <label class="muted">Starting PSI:</label>
+          <input id="t1StartPsi" type="number" placeholder="0" />
         </div>
+        <button type="button" class="btn-camera" onclick="openOcrModal('t1StartBoth')" title="Capture Start gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </button>
+        <div style="flex: 1; min-width: 55px;">
+          <label class="muted required-label">End Inches:</label>
+          <input id="t1EndInches" type="number" placeholder="0" />
+        </div>
+        <div style="flex: 1; min-width: 55px;">
+          <label class="muted">Ending PSI:</label>
+          <input id="t1EndPsi" type="number" placeholder="0" />
+        </div>
+        <button type="button" class="btn-camera" onclick="openOcrModal('t1EndBoth')" title="Capture End gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </button>
       </div>
+      <div class="muted" style="font-size: 10px; margin-top: 4px;">Tap camera to capture BOTH gauges: Large → Inches, Small → PSI</div>
 
       <div class="field" style="margin-top:6px;">
         <div class="muted">Allocated SCF</div>
@@ -1027,32 +1032,37 @@
         </div>
       </div>
 
-      <div class="row2">
-        <div class="field">
-          <div class="muted required-label">Starting PSI</div>
-          <div class="input-with-camera">
-            <input id="t2Start" type="number" placeholder="0" />
-            <button type="button" class="btn-camera" onclick="openOcrModal('t2Start')" title="Capture PSI from camera">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
-          </div>
+      <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
+        <div style="flex: 1; min-width: 55px;">
+          <label class="muted required-label">Start Inches:</label>
+          <input id="t2StartInches" type="number" placeholder="0" />
         </div>
-        <div class="field">
-          <div class="muted required-label">Ending PSI</div>
-          <div class="input-with-camera">
-            <input id="t2End" type="number" placeholder="0" />
-            <button type="button" class="btn-camera" onclick="openOcrModal('t2End')" title="Capture PSI from camera">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
-          </div>
+        <div style="flex: 1; min-width: 55px;">
+          <label class="muted">Starting PSI:</label>
+          <input id="t2StartPsi" type="number" placeholder="0" />
         </div>
+        <button type="button" class="btn-camera" onclick="openOcrModal('t2StartBoth')" title="Capture Start gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </button>
+        <div style="flex: 1; min-width: 55px;">
+          <label class="muted required-label">End Inches:</label>
+          <input id="t2EndInches" type="number" placeholder="0" />
+        </div>
+        <div style="flex: 1; min-width: 55px;">
+          <label class="muted">Ending PSI:</label>
+          <input id="t2EndPsi" type="number" placeholder="0" />
+        </div>
+        <button type="button" class="btn-camera" onclick="openOcrModal('t2EndBoth')" title="Capture End gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </button>
       </div>
+      <div class="muted" style="font-size: 10px; margin-top: 4px;">Tap camera to capture BOTH gauges: Large → Inches, Small → PSI</div>
 
       <div class="field" style="margin-top:6px;">
         <div class="muted">Allocated SCF</div>
@@ -2576,14 +2586,29 @@
 
           // Collect split data matching Google Sheet columns:
           // record_id, user_id, timestamp, source_tank, destination, amount_scf, gas, notes, result_text, source
+          // Plus new fields: t1_start_inches, t1_start_psi, t1_end_inches, t1_end_psi, t2_start_inches, t2_start_psi, t2_end_inches, t2_end_psi
           const record = {
             source_tank: document.getElementById("splitTotalSCF")?.value || "",
             destination: "Tank1: " + t1SCF + " SCF, Tank2: " + t2SCF + " SCF",
             amount_scf: document.getElementById("splitTotalSCF")?.value || "",
             gas: document.getElementById("splitGas")?.value || "",
-            notes: "T1: " + (document.getElementById("t1Start")?.value || "0") + "-" + (document.getElementById("t1End")?.value || "0") + "in, " +
-                   "T2: " + (document.getElementById("t2Start")?.value || "0") + "-" + (document.getElementById("t2End")?.value || "0") + "in",
-            result_text: "Total: " + (document.getElementById("splitTotalSCF")?.value || "0") + " SCF → Tank1: " + t1SCF + " SCF, Tank2: " + t2SCF + " SCF",
+            // Tank 1 inches and PSI
+            tank1_start_inches: document.getElementById("t1StartInches")?.value || "",
+            tank1_start_psi: document.getElementById("t1StartPsi")?.value || "",
+            tank1_end_inches: document.getElementById("t1EndInches")?.value || "",
+            tank1_end_psi: document.getElementById("t1EndPsi")?.value || "",
+            // Tank 2 inches and PSI
+            tank2_start_inches: document.getElementById("t2StartInches")?.value || "",
+            tank2_start_psi: document.getElementById("t2StartPsi")?.value || "",
+            tank2_end_inches: document.getElementById("t2EndInches")?.value || "",
+            tank2_end_psi: document.getElementById("t2EndPsi")?.value || "",
+            notes: "T1: " + (document.getElementById("t1StartInches")?.value || "0") + "-" + (document.getElementById("t1EndInches")?.value || "0") + "in, " +
+                   "T2: " + (document.getElementById("t2StartInches")?.value || "0") + "-" + (document.getElementById("t2EndInches")?.value || "0") + "in",
+            result_text: "Total: " + (document.getElementById("splitTotalSCF")?.value || "0") + " SCF → Tank1: " + t1SCF + " SCF, Tank2: " + t2SCF + " SCF • " +
+                   "Tank1 Starting (in)/PSI: " + (document.getElementById("t1StartPsi")?.value || "-") + " | " + (document.getElementById("t1StartInches")?.value || "-") + " • " +
+                   "Tank1 Ending (in)/PSI: " + (document.getElementById("t1EndPsi")?.value || "-") + " | " + (document.getElementById("t1EndInches")?.value || "-") + " • " +
+                   "Tank2 Starting (in)/PSI: " + (document.getElementById("t2StartPsi")?.value || "-") + " | " + (document.getElementById("t2StartInches")?.value || "-") + " • " +
+                   "Tank2 Ending (in)/PSI: " + (document.getElementById("t2EndPsi")?.value || "-") + " | " + (document.getElementById("t2EndInches")?.value || "-"),
             timestamp: new Date().toISOString()
           };
 
@@ -3039,14 +3064,18 @@
 
   const t1Full = $("t1Full");
   const t1Gal = $("t1Gal");
-  const t1Start = $("t1Start");
-  const t1End = $("t1End");
+  const t1StartInches = $("t1StartInches");
+  const t1StartPsi = $("t1StartPsi");
+  const t1EndInches = $("t1EndInches");
+  const t1EndPsi = $("t1EndPsi");
   const t1SCF = $("t1SCF");
 
   const t2Full = $("t2Full");
   const t2Gal = $("t2Gal");
-  const t2Start = $("t2Start");
-  const t2End = $("t2End");
+  const t2StartInches = $("t2StartInches");
+  const t2StartPsi = $("t2StartPsi");
+  const t2EndInches = $("t2EndInches");
+  const t2EndPsi = $("t2EndPsi");
   const t2SCF = $("t2SCF");
 
   const calcBtn = $("splitCalc");
@@ -3087,10 +3116,10 @@
   -----------------------------*/
   function checkReady() {
     const scf = num(totalSCF.value.replace(/,/g, ""));
-    const s1 = num(t1Start.value);
-    const e1 = num(t1End.value);
-    const s2 = num(t2Start.value);
-    const e2 = num(t2End.value);
+    const s1 = num(t1StartInches.value);
+    const e1 = num(t1EndInches.value);
+    const s2 = num(t2StartInches.value);
+    const e2 = num(t2EndInches.value);
 
     const ready =
       scf > 0 &&
@@ -3108,8 +3137,8 @@
   -----------------------------*/
   function calcSplit() {
     const scf = num(totalSCF.value.replace(/,/g, ""));
-    const d1 = Math.max(0, num(t1End.value) - num(t1Start.value));
-    const d2 = Math.max(0, num(t2End.value) - num(t2Start.value));
+    const d1 = Math.max(0, num(t1EndInches.value) - num(t1StartInches.value));
+    const d2 = Math.max(0, num(t2EndInches.value) - num(t2StartInches.value));
 
     if (!(scf > 0 && d1 > 0 && d2 > 0)) {
       err.style.display = "block";
@@ -3134,8 +3163,8 @@
   clearBtn.addEventListener("click", () => {
     [
       input, totalSCF, converted,
-      t1Full, t1Gal, t1Start, t1End, t1SCF,
-      t2Full, t2Gal, t2Start, t2End, t2SCF
+      t1Full, t1Gal, t1StartInches, t1StartPsi, t1EndInches, t1EndPsi, t1SCF,
+      t2Full, t2Gal, t2StartInches, t2StartPsi, t2EndInches, t2EndPsi, t2SCF
     ].forEach(el => el.value = "");
 
     err.style.display = "none";
@@ -3732,17 +3761,22 @@
         // Determine field type based on target field ID
         function getFieldType(fieldId) {
           // Both gauges (inches + PSI from single photo)
-          if (fieldId === 'startBoth' || fieldId === 'endBoth') {
+          if (fieldId === 'startBoth' || fieldId === 'endBoth' ||
+              fieldId === 't1StartBoth' || fieldId === 't1EndBoth' ||
+              fieldId === 't2StartBoth' || fieldId === 't2EndBoth') {
             return 'both';
           }
           // PSI fields
-          if (fieldId === 'startPsi' || fieldId === 'endPsi') {
+          if (fieldId === 'startPsi' || fieldId === 'endPsi' ||
+              fieldId === 't1StartPsi' || fieldId === 't1EndPsi' ||
+              fieldId === 't2StartPsi' || fieldId === 't2EndPsi') {
             return 'psi';
           }
           // Inches/level fields (large gauge or digital display)
           if (fieldId === 'startInches' || fieldId === 'endInches' ||
-              fieldId === 'fullInches' || fieldId === 't1Start' ||
-              fieldId === 't1End' || fieldId === 't2Start' || fieldId === 't2End') {
+              fieldId === 'fullInches' ||
+              fieldId === 't1StartInches' || fieldId === 't1EndInches' ||
+              fieldId === 't2StartInches' || fieldId === 't2EndInches') {
             return 'level';
           }
           // Default to level for unknown fields
@@ -3852,6 +3886,74 @@
             }
             if (detectedPsi !== null) {
               const psiField = document.getElementById('endPsi');
+              if (psiField) {
+                psiField.value = detectedPsi;
+                psiField.dispatchEvent(new Event('input', { bubbles: true }));
+                psiField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+          } else if (targetFieldId === 't1StartBoth') {
+            if (detectedInches !== null) {
+              const inchField = document.getElementById('t1StartInches');
+              if (inchField) {
+                inchField.value = detectedInches;
+                inchField.dispatchEvent(new Event('input', { bubbles: true }));
+                inchField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+            if (detectedPsi !== null) {
+              const psiField = document.getElementById('t1StartPsi');
+              if (psiField) {
+                psiField.value = detectedPsi;
+                psiField.dispatchEvent(new Event('input', { bubbles: true }));
+                psiField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+          } else if (targetFieldId === 't1EndBoth') {
+            if (detectedInches !== null) {
+              const inchField = document.getElementById('t1EndInches');
+              if (inchField) {
+                inchField.value = detectedInches;
+                inchField.dispatchEvent(new Event('input', { bubbles: true }));
+                inchField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+            if (detectedPsi !== null) {
+              const psiField = document.getElementById('t1EndPsi');
+              if (psiField) {
+                psiField.value = detectedPsi;
+                psiField.dispatchEvent(new Event('input', { bubbles: true }));
+                psiField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+          } else if (targetFieldId === 't2StartBoth') {
+            if (detectedInches !== null) {
+              const inchField = document.getElementById('t2StartInches');
+              if (inchField) {
+                inchField.value = detectedInches;
+                inchField.dispatchEvent(new Event('input', { bubbles: true }));
+                inchField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+            if (detectedPsi !== null) {
+              const psiField = document.getElementById('t2StartPsi');
+              if (psiField) {
+                psiField.value = detectedPsi;
+                psiField.dispatchEvent(new Event('input', { bubbles: true }));
+                psiField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+          } else if (targetFieldId === 't2EndBoth') {
+            if (detectedInches !== null) {
+              const inchField = document.getElementById('t2EndInches');
+              if (inchField) {
+                inchField.value = detectedInches;
+                inchField.dispatchEvent(new Event('input', { bubbles: true }));
+                inchField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+            if (detectedPsi !== null) {
+              const psiField = document.getElementById('t2EndPsi');
               if (psiField) {
                 psiField.value = detectedPsi;
                 psiField.dispatchEvent(new Event('input', { bubbles: true }));

@@ -390,6 +390,28 @@
               const psiVal = record.end_psi || "-";
               lines.push(`Ending (in) / PSI: ${psiVal} | ${inVal}`);
             }
+            // Tank1 inches and PSI for split records
+            if (record.tank1_start_inches || record.tank1_start_psi) {
+              const inVal = record.tank1_start_inches || "-";
+              const psiVal = record.tank1_start_psi || "-";
+              lines.push(`Tank1 Starting (in) / PSI: ${psiVal} | ${inVal}`);
+            }
+            if (record.tank1_end_inches || record.tank1_end_psi) {
+              const inVal = record.tank1_end_inches || "-";
+              const psiVal = record.tank1_end_psi || "-";
+              lines.push(`Tank1 Ending (in) / PSI: ${psiVal} | ${inVal}`);
+            }
+            // Tank2 inches and PSI for split records
+            if (record.tank2_start_inches || record.tank2_start_psi) {
+              const inVal = record.tank2_start_inches || "-";
+              const psiVal = record.tank2_start_psi || "-";
+              lines.push(`Tank2 Starting (in) / PSI: ${psiVal} | ${inVal}`);
+            }
+            if (record.tank2_end_inches || record.tank2_end_psi) {
+              const inVal = record.tank2_end_inches || "-";
+              const psiVal = record.tank2_end_psi || "-";
+              lines.push(`Tank2 Ending (in) / PSI: ${psiVal} | ${inVal}`);
+            }
             if (record.capacity) lines.push(`Capacity: ${record.capacity} ${record.capacity_unit || ""}`);
             if (record.flow_value) lines.push(`Flow: ${record.flow_value}`);
             if (record.timer_elapsed) lines.push(`Timer: ${record.timer_elapsed}`);
@@ -484,6 +506,28 @@
             const inVal = record.end_inches || "-";
             const psiVal = record.end_psi || "-";
             extraLines.push(`Ending (in) / PSI: ${psiVal} | ${inVal}`);
+          }
+          // Tank1 inches/PSI for split records
+          if ((record.tank1_start_inches || record.tank1_start_psi) && !text.includes("Tank1 Starting")) {
+            const inVal = record.tank1_start_inches || "-";
+            const psiVal = record.tank1_start_psi || "-";
+            extraLines.push(`Tank1 Starting (in) / PSI: ${psiVal} | ${inVal}`);
+          }
+          if ((record.tank1_end_inches || record.tank1_end_psi) && !text.includes("Tank1 Ending")) {
+            const inVal = record.tank1_end_inches || "-";
+            const psiVal = record.tank1_end_psi || "-";
+            extraLines.push(`Tank1 Ending (in) / PSI: ${psiVal} | ${inVal}`);
+          }
+          // Tank2 inches/PSI for split records
+          if ((record.tank2_start_inches || record.tank2_start_psi) && !text.includes("Tank2 Starting")) {
+            const inVal = record.tank2_start_inches || "-";
+            const psiVal = record.tank2_start_psi || "-";
+            extraLines.push(`Tank2 Starting (in) / PSI: ${psiVal} | ${inVal}`);
+          }
+          if ((record.tank2_end_inches || record.tank2_end_psi) && !text.includes("Tank2 Ending")) {
+            const inVal = record.tank2_end_inches || "-";
+            const psiVal = record.tank2_end_psi || "-";
+            extraLines.push(`Tank2 Ending (in) / PSI: ${psiVal} | ${inVal}`);
           }
 
           // Insert extra lines after the first line (usually the title/result line)
