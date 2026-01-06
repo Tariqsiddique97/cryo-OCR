@@ -143,6 +143,12 @@
       tr.record-row.selected-for-delete {
         background: rgba(239, 68, 68, 0.25);
       }
+      tr.record-row.selected {
+        background: rgba(37, 99, 235, 0.15);
+      }
+      tr.record-row.selected:hover {
+        background: rgba(37, 99, 235, 0.2);
+      }
 
       /* Delete confirmation modal */
       .delete-modal {
@@ -500,13 +506,15 @@
           rows.forEach((row) => {
             const checkbox = row.querySelector(".row-checkbox");
 
-            // Checkbox change handler for print selection
+            // Checkbox change handler for print selection and highlighting
             checkbox.addEventListener("change", function (e) {
               e.stopPropagation();
               if (this.checked) {
                 row.classList.add("print-selected");
+                row.classList.add("selected");
               } else {
                 row.classList.remove("print-selected");
+                row.classList.remove("selected");
               }
               updateSelectAllState();
             });
@@ -723,8 +731,10 @@
             cb.checked = this.checked;
             if (this.checked) {
               rows[i].classList.add("print-selected");
+              rows[i].classList.add("selected");
             } else {
               rows[i].classList.remove("print-selected");
+              rows[i].classList.remove("selected");
             }
           });
           updateSelectAllState(); // Update delete button visibility
