@@ -3824,7 +3824,7 @@
                 // Show different message for digital meter (inches only) vs both gauges
                 if (data.inches !== null && data.psi === null) {
                   // Digital meter like Bulk Asset Monitor - shows inches only
-                  resultValue.textContent = `Inches: ${data.inches} (digital meter - enter PSI manually)`;
+                  resultValue.textContent = `Inches: ${data.inches} (enter PSI manually)`;
                 } else {
                   const inchesText = data.inches !== null ? data.inches : '-';
                   const psiText = data.psi !== null ? data.psi : '-';
