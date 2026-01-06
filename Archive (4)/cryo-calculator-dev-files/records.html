@@ -336,7 +336,7 @@
         const selectAllCheckbox = document.getElementById("selectAll");
 
         // API Endpoint
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycby25Hcf3N4TjDr7tRwFD4uKEaHLebF9GqASv5j9jC5eHVKEiFLM-TceAG1wyinudbAi/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyt7uqk23eGu1YMz7YIXf_5Y_8221kllXQ1zN6x_H9vx_nzyRvWZdybnaHWzWkeVgBZ/exec";
 
         // Store records and pending delete
         let allRecords = [];
@@ -498,7 +498,7 @@
           // For CALC records: Extract Starting/Ending PSI lines and move them after "Change (in)"
           const startingLines = [];
           const endingLines = [];
-          finalParts = finalParts.filter(p => {
+          finalParts = finalParts.filter((p) => {
             if (p.toLowerCase().includes("starting (in)") || p.toLowerCase().includes("starting(in)")) {
               startingLines.push(p);
               return false;
@@ -511,7 +511,7 @@
           });
 
           // Find "Change" line and insert Starting/Ending PSI right after it
-          const changeIndex = finalParts.findIndex(p => p.toLowerCase().includes("change"));
+          const changeIndex = finalParts.findIndex((p) => p.toLowerCase().includes("change"));
           if (changeIndex !== -1 && (startingLines.length > 0 || endingLines.length > 0)) {
             finalParts.splice(changeIndex + 1, 0, ...startingLines, ...endingLines);
           } else if (startingLines.length > 0 || endingLines.length > 0) {

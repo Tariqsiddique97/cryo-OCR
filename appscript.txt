@@ -630,20 +630,28 @@ function handleOcr_(body, returnObject) {
   let prompt;
   switch (fieldType) {
     case "both":
-      prompt = `You see TWO gauges stacked vertically:
-1. LARGE gauge (top): Shows product level in IN.H₂O (inches of water) - scale typically 0-400
-2. SMALL gauge (bottom): Shows pressure in PSI - scale typically 0-400
+      prompt = `Look at the image and identify what type of gauge/meter is shown:
 
-Read BOTH gauges:
-- For the LARGE gauge: read the value on the IN.H₂O scale (inner black numbers)
-- For the SMALL gauge: read the PSI value (outer black numbers)
+OPTION A - TWO ANALOG GAUGES stacked vertically:
+- LARGE gauge (top): Shows product level in IN.H₂O (inches of water) - scale typically 0-400
+- SMALL gauge (bottom): Shows pressure in PSI - scale typically 0-400
+If you see two analog gauges, read BOTH values.
 
-Answer with exactly TWO lines in this format:
-INCHES=123
-PSI=45
-(only digits or digits with decimal, no units)
+OPTION B - DIGITAL METER/DISPLAY (like "Airgas Bulk Asset Monitor"):
+- A digital LCD display showing a number
+- This represents PSI only (user will enter inches manually)
+If you see a digital display, read just the PSI value.
 
-If you cannot read a value, use ERROR for that value (e.g., INCHES=ERROR or PSI=ERROR)`;
+ANSWER FORMAT:
+- If TWO analog gauges: respond with two lines:
+  INCHES=123
+  PSI=45
+- If DIGITAL METER only: respond with two lines:
+  INCHES=MANUAL
+  PSI=43
+
+(only digits or digits with decimal for values, no units)
+If you cannot read a value, use ERROR for that value.`;
       break;
 
     case "psi":
@@ -785,20 +793,23 @@ function parseOcrValue_(text) {
 /**
  * Parse BOTH inches and PSI values from Gemini OCR response
  * Expected format: INCHES=123\nPSI=45
+ * For digital meters: INCHES=MANUAL\nPSI=43
  */
 function parseOcrBothValues_(text) {
   const result = { inches: null, psi: null };
   if (!text) return result;
 
-  // Try to extract INCHES=xxx
+  const upperText = text.toUpperCase();
+
+  // Try to extract INCHES=xxx (skip if ERROR or MANUAL)
   const inchesMatch = text.match(/INCHES\s*=\s*([0-9]+(?:\.[0-9]+)?)/i);
-  if (inchesMatch && !text.toUpperCase().includes("INCHES=ERROR")) {
+  if (inchesMatch && !upperText.includes("INCHES=ERROR") && !upperText.includes("INCHES=MANUAL")) {
     result.inches = parseFloat(inchesMatch[1]);
   }
 
   // Try to extract PSI=xxx
   const psiMatch = text.match(/PSI\s*=\s*([0-9]+(?:\.[0-9]+)?)/i);
-  if (psiMatch && !text.toUpperCase().includes("PSI=ERROR")) {
+  if (psiMatch && !upperText.includes("PSI=ERROR")) {
     result.psi = parseFloat(psiMatch[1]);
   }
 

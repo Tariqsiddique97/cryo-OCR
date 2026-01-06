@@ -2451,7 +2451,7 @@
         };
 
         /* ----- API Configuration ----- */
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycby25Hcf3N4TjDr7tRwFD4uKEaHLebF9GqASv5j9jC5eHVKEiFLM-TceAG1wyinudbAi/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyt7uqk23eGu1YMz7YIXf_5Y_8221kllXQ1zN6x_H9vx_nzyRvWZdybnaHWzWkeVgBZ/exec";
 
         function getAuth() {
           try {
@@ -3657,7 +3657,7 @@
         // Uses the same API_ENDPOINT from constant.js or inline definition
         const OCR_API_ENDPOINT = typeof API_ENDPOINT !== 'undefined'
           ? API_ENDPOINT
-          : "https://script.google.com/macros/s/AKfycby25Hcf3N4TjDr7tRwFD4uKEaHLebF9GqASv5j9jC5eHVKEiFLM-TceAG1wyinudbAi/exec";
+          : "https://script.google.com/macros/s/AKfycbyt7uqk23eGu1YMz7YIXf_5Y_8221kllXQ1zN6x_H9vx_nzyRvWZdybnaHWzWkeVgBZ/exec";
 
         // DOM Elements
         const modal = document.getElementById('ocrModal');
@@ -3821,13 +3821,18 @@
                 detectedValue = null; // Clear single value
                 resultDiv.classList.add('show');
                 resultDiv.classList.remove('error');
-                const inchesText = data.inches !== null ? data.inches : '-';
-                const psiText = data.psi !== null ? data.psi : '-';
-                resultValue.textContent = `Inches: ${inchesText} | PSI: ${psiText}`;
+                // Show different message for digital meter (PSI only) vs both gauges
+                if (data.inches === null && data.psi !== null) {
+                  resultValue.textContent = `PSI: ${data.psi} (digital meter - enter inches manually)`;
+                } else {
+                  const inchesText = data.inches !== null ? data.inches : '-';
+                  const psiText = data.psi !== null ? data.psi : '-';
+                  resultValue.textContent = `Inches: ${inchesText} | PSI: ${psiText}`;
+                }
                 btnApply.disabled = false;
               } else {
                 resultDiv.classList.add('show', 'error');
-                resultValue.textContent = data.error || 'Could not read gauges. Make sure BOTH gauges are visible in the photo.';
+                resultValue.textContent = data.error || 'Could not read gauges. Make sure gauges are visible in the photo.';
                 btnApply.disabled = true;
               }
               return;
