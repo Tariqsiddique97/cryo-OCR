@@ -815,38 +815,38 @@
               </select>
             </label>
 
-            <div class="row2">
-              <div>
-                <label>
-                  Starting PSI:
-                  <div class="input-with-camera">
-                    <input id="startInches" type="number" placeholder="0" />
-                    <button type="button" class="btn-camera" onclick="openOcrModal('startInches')" title="Capture PSI from camera">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
-                      </svg>
-                    </button>
-                  </div>
-                </label>
+            <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
+              <div style="flex: 1; min-width: 55px;">
+                <label>Start Inches:</label>
+                <input id="startInches" type="number" placeholder="0" />
               </div>
-              <div>
-                <label>
-                  Ending PSI:
-                  <div class="input-with-camera">
-                    <input id="endInches" type="number" placeholder="0" />
-                    <button type="button" class="btn-camera" onclick="openOcrModal('endInches')" title="Capture PSI from camera">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
-                      </svg>
-                    </button>
-                  </div>
-                </label>
+              <div style="flex: 1; min-width: 55px;">
+                <label>Starting PSI:</label>
+                <input id="startPsi" type="number" placeholder="0" />
               </div>
+              <button type="button" class="btn-camera" onclick="openOcrModal('startBoth')" title="Capture Start gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </button>
+              <div style="flex: 1; min-width: 55px;">
+                <label>End Inches:</label>
+                <input id="endInches" type="number" placeholder="0" />
+              </div>
+              <div style="flex: 1; min-width: 55px;">
+                <label>Ending PSI:</label>
+                <input id="endPsi" type="number" placeholder="0" />
+              </div>
+              <button type="button" class="btn-camera" onclick="openOcrModal('endBoth')" title="Capture End gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </button>
             </div>
             <div class="muted">
-              Enter PSI readings from the tank gauge. Use the camera button to capture and auto-read values via OCR.
+              Tap camera to capture BOTH gauges: Large gauge → Inches, Small gauge → PSI.
             </div>
 
             <!-- Timer + Flow -->
@@ -2441,7 +2441,7 @@
         };
 
         /* ----- API Configuration ----- */
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyTMm85HJXTTz4S8crTn2GCS7Mw4Fjfusoz1RTh1q2LQAPNwmQBEiE4ojK9WdOXw159/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycby25Hcf3N4TjDr7tRwFD4uKEaHLebF9GqASv5j9jC5eHVKEiFLM-TceAG1wyinudbAi/exec";
 
         function getAuth() {
           try {
@@ -2508,6 +2508,8 @@
             full_inches: document.getElementById("fullInches")?.value || "",
             start_inches: document.getElementById("startInches")?.value || "",
             end_inches: document.getElementById("endInches")?.value || "",
+            start_psi: document.getElementById("startPsi")?.value || "",
+            end_psi: document.getElementById("endPsi")?.value || "",
             capacity: document.getElementById("fullCap")?.value || "",
             capacity_unit: document.getElementById("capUnit")?.value || "",
             gas: document.getElementById("gas")?.value || "",
@@ -2984,7 +2986,7 @@
 
         /* ----- CLEAR (exposed for button onclick) ----- */
         window.clearForm = function () {
-          ["fullInches", "fullCap", "startInches", "endInches", "flowValue", "geoDiameter", "geoLength"].forEach((id) => {
+          ["fullInches", "fullCap", "startInches", "endInches", "startPsi", "endPsi", "flowValue", "geoDiameter", "geoLength"].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.value = "";
           });
@@ -3446,6 +3448,8 @@
           "gas",
           "startInches",
           "endInches",
+          "startPsi",
+          "endPsi",
           "flowValue",
           "chkEstimateD",
           "useTimerPrimary",
@@ -3622,7 +3626,7 @@
         // Uses the same API_ENDPOINT from constant.js or inline definition
         const OCR_API_ENDPOINT = typeof API_ENDPOINT !== 'undefined'
           ? API_ENDPOINT
-          : "https://script.google.com/macros/s/AKfycbyTMm85HJXTTz4S8crTn2GCS7Mw4Fjfusoz1RTh1q2LQAPNwmQBEiE4ojK9WdOXw159/exec";
+          : "https://script.google.com/macros/s/AKfycby25Hcf3N4TjDr7tRwFD4uKEaHLebF9GqASv5j9jC5eHVKEiFLM-TceAG1wyinudbAi/exec";
 
         // DOM Elements
         const modal = document.getElementById('ocrModal');
@@ -3642,6 +3646,8 @@
         let targetFieldId = null;
         let capturedImageBase64 = null;
         let detectedValue = null;
+        let detectedInches = null;
+        let detectedPsi = null;
 
         // Open modal for a specific field
         window.openOcrModal = function (fieldId) {
@@ -3656,6 +3662,8 @@
         function resetOcrState() {
           capturedImageBase64 = null;
           detectedValue = null;
+          detectedInches = null;
+          detectedPsi = null;
           btnCapture.disabled = true;
           btnRetake.style.display = 'none';
           btnApply.disabled = true;
@@ -3721,10 +3729,34 @@
           await runOcr();
         }
 
+        // Determine field type based on target field ID
+        function getFieldType(fieldId) {
+          // Both gauges (inches + PSI from single photo)
+          if (fieldId === 'startBoth' || fieldId === 'endBoth') {
+            return 'both';
+          }
+          // PSI fields
+          if (fieldId === 'startPsi' || fieldId === 'endPsi') {
+            return 'psi';
+          }
+          // Inches/level fields (large gauge or digital display)
+          if (fieldId === 'startInches' || fieldId === 'endInches' ||
+              fieldId === 'fullInches' || fieldId === 't1Start' ||
+              fieldId === 't1End' || fieldId === 't2Start' || fieldId === 't2End') {
+            return 'level';
+          }
+          // Default to level for unknown fields
+          return 'level';
+        }
+
         // Run OCR via Apps Script API (Gemini API key hidden server-side)
         async function runOcr() {
           loadingDiv.classList.add('show');
           resultDiv.classList.remove('show', 'error');
+
+          // Determine the correct field type for OCR
+          const fieldType = getFieldType(targetFieldId);
+          console.log('OCR field type:', fieldType, 'for field:', targetFieldId);
 
           try {
             // Simple fetch - Apps Script handles JSON body
@@ -3736,7 +3768,7 @@
               body: JSON.stringify({
                 action: 'ocr',
                 image: capturedImageBase64,
-                fieldType: 'psi'
+                fieldType: fieldType
               })
             });
 
@@ -3745,15 +3777,39 @@
 
             loadingDiv.classList.remove('show');
 
+            // Handle 'both' field type - returns inches and psi separately
+            if (fieldType === 'both') {
+              if (data.ok && (data.inches !== null || data.psi !== null)) {
+                detectedInches = data.inches;
+                detectedPsi = data.psi;
+                detectedValue = null; // Clear single value
+                resultDiv.classList.add('show');
+                resultDiv.classList.remove('error');
+                const inchesText = data.inches !== null ? data.inches : '-';
+                const psiText = data.psi !== null ? data.psi : '-';
+                resultValue.textContent = `Inches: ${inchesText} | PSI: ${psiText}`;
+                btnApply.disabled = false;
+              } else {
+                resultDiv.classList.add('show', 'error');
+                resultValue.textContent = data.error || 'Could not read gauges. Make sure BOTH gauges are visible in the photo.';
+                btnApply.disabled = true;
+              }
+              return;
+            }
+
+            // Handle single value response
             if (data.ok && data.value !== undefined) {
               detectedValue = data.value;
+              detectedInches = null;
+              detectedPsi = null;
               resultDiv.classList.add('show');
               resultDiv.classList.remove('error');
               resultValue.textContent = detectedValue;
               btnApply.disabled = false;
             } else {
               resultDiv.classList.add('show', 'error');
-              resultValue.textContent = data.error || 'Could not read PSI value. Please retake the photo with the gauge clearly visible.';
+              const gaugeType = fieldType === 'psi' ? 'PSI gauge' : 'level gauge';
+              resultValue.textContent = data.error || `Could not read ${gaugeType}. Please retake the photo with the gauge clearly visible.`;
               btnApply.disabled = true;
             }
           } catch (err) {
@@ -3767,7 +3823,43 @@
 
         // Apply value to target field
         function applyValue() {
-          if (detectedValue !== null && targetFieldId) {
+          // Handle 'both' field type - fill both inches and psi fields
+          if (targetFieldId === 'startBoth') {
+            if (detectedInches !== null) {
+              const inchField = document.getElementById('startInches');
+              if (inchField) {
+                inchField.value = detectedInches;
+                inchField.dispatchEvent(new Event('input', { bubbles: true }));
+                inchField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+            if (detectedPsi !== null) {
+              const psiField = document.getElementById('startPsi');
+              if (psiField) {
+                psiField.value = detectedPsi;
+                psiField.dispatchEvent(new Event('input', { bubbles: true }));
+                psiField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+          } else if (targetFieldId === 'endBoth') {
+            if (detectedInches !== null) {
+              const inchField = document.getElementById('endInches');
+              if (inchField) {
+                inchField.value = detectedInches;
+                inchField.dispatchEvent(new Event('input', { bubbles: true }));
+                inchField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+            if (detectedPsi !== null) {
+              const psiField = document.getElementById('endPsi');
+              if (psiField) {
+                psiField.value = detectedPsi;
+                psiField.dispatchEvent(new Event('input', { bubbles: true }));
+                psiField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+          } else if (detectedValue !== null && targetFieldId) {
+            // Handle single value
             const field = document.getElementById(targetFieldId);
             if (field) {
               field.value = detectedValue;

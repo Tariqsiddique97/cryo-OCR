@@ -629,9 +629,28 @@ function handleOcr_(body, returnObject) {
   // Build prompt based on field type
   let prompt;
   switch (fieldType) {
+    case "both":
+      prompt = `You see TWO gauges stacked vertically:
+1. LARGE gauge (top): Shows product level in IN.H₂O (inches of water) - scale typically 0-400
+2. SMALL gauge (bottom): Shows pressure in PSI - scale typically 0-400
+
+Read BOTH gauges:
+- For the LARGE gauge: read the value on the IN.H₂O scale (inner black numbers)
+- For the SMALL gauge: read the PSI value (outer black numbers)
+
+Answer with exactly TWO lines in this format:
+INCHES=123
+PSI=45
+(only digits or digits with decimal, no units)
+
+If you cannot read a value, use ERROR for that value (e.g., INCHES=ERROR or PSI=ERROR)`;
+      break;
+
     case "psi":
     case "psi_analog":
-      prompt = `You see a pressure gauge (PSI meter). Read the current pressure value indicated by the needle or digital display.
+      prompt = `You see a SMALL pressure gauge labeled "psi" (typically the smaller gauge, below or beside a larger one). This gauge shows tank pressure in PSI units. The scale typically goes 0-400 PSI with inner bar scale.
+
+Read the current pressure value indicated by the needle on the PSI scale (the outer black numbers, not the inner bar scale).
 
 Answer with exactly one line in this format: VALUE=123
 (only digits or digits with decimal, no units, no other text).
@@ -640,7 +659,13 @@ If you cannot read the value clearly, respond with: VALUE=ERROR`;
       break;
 
     case "level":
-      prompt = `You see a tank level gauge showing inches of water or liquid level. Read the current level value.
+    case "inches":
+      prompt = `You see a LARGE tank level gauge showing product level. This could be:
+1. A large analog CHART gauge with "IN.H₂O" (inches of water) scale - typically 0-400 range
+2. A digital display (like Airgas Bulk Asset Monitor) showing a number
+
+For analog gauges: Read the value where the needle points on the IN.H₂O scale (inner black numbers, typically 0-400).
+For digital displays: Read the number shown on the LCD/LED display.
 
 Answer with exactly one line in this format: VALUE=123
 (only digits or digits with decimal, no units, no other text).
@@ -704,7 +729,19 @@ If you cannot read the value clearly, respond with: VALUE=ERROR`;
     const data = JSON.parse(responseText);
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Parse value from response
+    // Handle 'both' field type - returns inches and psi separately
+    if (fieldType === "both") {
+      const result = parseOcrBothValues_(text);
+      if (result.inches !== null || result.psi !== null) {
+        safeAudit_("OCR_OK", { fieldType, inches: result.inches, psi: result.psi });
+        return respond({ ok: true, inches: result.inches, psi: result.psi, raw: text });
+      } else {
+        safeAudit_("OCR_FAIL", { reason: "parse_error", raw: text });
+        return respond({ ok: false, error: "Could not read gauges from image", raw: text }, 422);
+      }
+    }
+
+    // Parse single value from response
     const value = parseOcrValue_(text);
 
     if (value !== null) {
@@ -743,6 +780,29 @@ function parseOcrValue_(text) {
   }
 
   return null;
+}
+
+/**
+ * Parse BOTH inches and PSI values from Gemini OCR response
+ * Expected format: INCHES=123\nPSI=45
+ */
+function parseOcrBothValues_(text) {
+  const result = { inches: null, psi: null };
+  if (!text) return result;
+
+  // Try to extract INCHES=xxx
+  const inchesMatch = text.match(/INCHES\s*=\s*([0-9]+(?:\.[0-9]+)?)/i);
+  if (inchesMatch && !text.toUpperCase().includes("INCHES=ERROR")) {
+    result.inches = parseFloat(inchesMatch[1]);
+  }
+
+  // Try to extract PSI=xxx
+  const psiMatch = text.match(/PSI\s*=\s*([0-9]+(?:\.[0-9]+)?)/i);
+  if (psiMatch && !text.toUpperCase().includes("PSI=ERROR")) {
+    result.psi = parseFloat(psiMatch[1]);
+  }
+
+  return result;
 }
 
 /** ====== HELPERS: SHEET IO ====== **/
@@ -931,7 +991,7 @@ function createAnotherUser() {
 
 // Example minimal headers (add more columns if you want):
 
-// record_id | user_id | timestamp | tank_type | full_inches | start_inches | end_inches | capacity | capacity_unit | gas | flow_value | timer_elapsed | result_text | source
+// record_id | user_id | timestamp | tank_type | full_inches | start_inches | end_inches | start_psi | end_psi | capacity | capacity_unit | gas | flow_value | timer_elapsed | result_text | source
 
 // split_records
 // record_id | user_id | timestamp | source_tank | destination | amount_scf | gas | notes | result_text | source

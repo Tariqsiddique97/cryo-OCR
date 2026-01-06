@@ -336,7 +336,7 @@
         const selectAllCheckbox = document.getElementById("selectAll");
 
         // API Endpoint
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyTMm85HJXTTz4S8crTn2GCS7Mw4Fjfusoz1RTh1q2LQAPNwmQBEiE4ojK9WdOXw159/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycby25Hcf3N4TjDr7tRwFD4uKEaHLebF9GqASv5j9jC5eHVKEiFLM-TceAG1wyinudbAi/exec";
 
         // Store records and pending delete
         let allRecords = [];
@@ -378,8 +378,18 @@
             // Build from record fields if no result_text
             const lines = [];
             if (record.tank_type) lines.push(`Tank: ${record.tank_type}`);
-            if (record.start_inches) lines.push(`Start: ${record.start_inches}"`);
-            if (record.end_inches) lines.push(`End: ${record.end_inches}"`);
+            // Show starting inches and PSI in exact format: Starting (in) / PSI: 120 | 25
+            if (record.start_inches || record.start_psi) {
+              const inVal = record.start_inches || "-";
+              const psiVal = record.start_psi || "-";
+              lines.push(`Starting (in) / PSI: ${inVal} | ${psiVal}`);
+            }
+            // Show ending inches and PSI in exact format: Ending (in) / PSI: 225 | 25
+            if (record.end_inches || record.end_psi) {
+              const inVal = record.end_inches || "-";
+              const psiVal = record.end_psi || "-";
+              lines.push(`Ending (in) / PSI: ${inVal} | ${psiVal}`);
+            }
             if (record.capacity) lines.push(`Capacity: ${record.capacity} ${record.capacity_unit || ""}`);
             if (record.flow_value) lines.push(`Flow: ${record.flow_value}`);
             if (record.timer_elapsed) lines.push(`Timer: ${record.timer_elapsed}`);
@@ -461,6 +471,26 @@
               .split(/[|\n]/)
               .map((s) => s.trim())
               .filter((s) => s);
+          }
+
+          // Inject inches/PSI values if available in record but not already in result_text
+          const extraLines = [];
+          if ((record.start_inches || record.start_psi) && !text.includes("Starting (in)")) {
+            const inVal = record.start_inches || "-";
+            const psiVal = record.start_psi || "-";
+            extraLines.push(`Starting (in) / PSI: ${inVal} | ${psiVal}`);
+          }
+          if ((record.end_inches || record.end_psi) && !text.includes("Ending (in)")) {
+            const inVal = record.end_inches || "-";
+            const psiVal = record.end_psi || "-";
+            extraLines.push(`Ending (in) / PSI: ${inVal} | ${psiVal}`);
+          }
+
+          // Insert extra lines after the first line (usually the title/result line)
+          if (extraLines.length > 0 && finalParts.length > 0) {
+            finalParts.splice(1, 0, ...extraLines);
+          } else if (extraLines.length > 0) {
+            finalParts = extraLines.concat(finalParts);
           }
 
           return finalParts.map((p) => `<span class="detail-line">${esc(p)}</span>`).join("");
