@@ -567,6 +567,50 @@
         height: 22px;
       }
 
+      /* Field with inline camera - button inside input */
+      .field-with-camera {
+        position: relative;
+      }
+      .field-with-camera input {
+        width: 100%;
+        padding-right: 36px !important;
+        box-sizing: border-box;
+      }
+      /* Small camera button positioned inside input - vertically centered */
+      .btn-camera-sm {
+        position: absolute;
+        right: 4px;
+        top: 0;
+        bottom: 0;
+        margin: 11px 0;
+        height: 28px;
+        width: 28px;
+        min-width: 28px;
+        padding: 0;
+        border-radius: 6px;
+        background: #f97316;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(249, 115, 22, 0.3);
+        transition: all 0.15s ease;
+        z-index: 1;
+      }
+      .btn-camera-sm:hover {
+        background: #ea580c;
+        transform: scale(1.05);
+      }
+      .btn-camera-sm:active {
+        transform: scale(0.98);
+      }
+      .btn-camera-sm svg {
+        width: 14px;
+        height: 14px;
+      }
+
       /* === Cryo Reserve Calculator Field Sizing === */
       /* Tank 1-4 SCF and Remaining SCF - match Amount/Gas field width */
       #pane-reserve #resT1,
@@ -816,37 +860,57 @@
             </label>
 
             <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
-              <div style="flex: 1; min-width: 55px;">
+              <div style="flex: 1; min-width: 80px;">
                 <label>Start Inches:</label>
-                <input id="startInches" type="number" placeholder="0" />
+                <div class="field-with-camera">
+                  <input id="startInches" type="number" placeholder="0" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('startInches')" title="Capture Inches">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <div style="flex: 1; min-width: 55px;">
+              <div style="flex: 1; min-width: 80px;">
                 <label>Starting PSI:</label>
-                <input id="startPsi" type="number" placeholder="0" />
+                <div class="field-with-camera">
+                  <input id="startPsi" type="number" placeholder="0" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('startPsi')" title="Capture PSI">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <button type="button" class="btn-camera" onclick="openOcrModal('startBoth')" title="Capture Start gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-              </button>
-              <div style="flex: 1; min-width: 55px;">
+              <div style="flex: 1; min-width: 80px;">
                 <label>End Inches:</label>
-                <input id="endInches" type="number" placeholder="0" />
+                <div class="field-with-camera">
+                  <input id="endInches" type="number" placeholder="0" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('endInches')" title="Capture Inches">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <div style="flex: 1; min-width: 55px;">
+              <div style="flex: 1; min-width: 80px;">
                 <label>Ending PSI:</label>
-                <input id="endPsi" type="number" placeholder="0" />
+                <div class="field-with-camera">
+                  <input id="endPsi" type="number" placeholder="0" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('endPsi')" title="Capture PSI">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <button type="button" class="btn-camera" onclick="openOcrModal('endBoth')" title="Capture End gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-              </button>
             </div>
             <div class="muted">
-              Tap camera to capture BOTH gauges: Large gauge → Inches, Small gauge → PSI.
+              Tap 📷 on each field to capture reading, or enter values manually.
             </div>
 
             <!-- Timer + Flow -->
@@ -980,36 +1044,56 @@
       </div>
 
       <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
-        <div style="flex: 1; min-width: 55px;">
+        <div style="flex: 1; min-width: 80px;">
           <label class="muted required-label">Start Inches:</label>
-          <input id="t1StartInches" type="number" placeholder="0" />
+          <div class="field-with-camera">
+            <input id="t1StartInches" type="number" placeholder="0" />
+            <button type="button" class="btn-camera-sm" onclick="openOcrModal('t1StartInches')" title="Capture Inches">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <div style="flex: 1; min-width: 55px;">
+        <div style="flex: 1; min-width: 80px;">
           <label class="muted">Starting PSI:</label>
-          <input id="t1StartPsi" type="number" placeholder="0" />
+          <div class="field-with-camera">
+            <input id="t1StartPsi" type="number" placeholder="0" />
+            <button type="button" class="btn-camera-sm" onclick="openOcrModal('t1StartPsi')" title="Capture PSI">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <button type="button" class="btn-camera" onclick="openOcrModal('t1StartBoth')" title="Capture Start gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-        </button>
-        <div style="flex: 1; min-width: 55px;">
+        <div style="flex: 1; min-width: 80px;">
           <label class="muted required-label">End Inches:</label>
-          <input id="t1EndInches" type="number" placeholder="0" />
+          <div class="field-with-camera">
+            <input id="t1EndInches" type="number" placeholder="0" />
+            <button type="button" class="btn-camera-sm" onclick="openOcrModal('t1EndInches')" title="Capture Inches">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <div style="flex: 1; min-width: 55px;">
+        <div style="flex: 1; min-width: 80px;">
           <label class="muted">Ending PSI:</label>
-          <input id="t1EndPsi" type="number" placeholder="0" />
+          <div class="field-with-camera">
+            <input id="t1EndPsi" type="number" placeholder="0" />
+            <button type="button" class="btn-camera-sm" onclick="openOcrModal('t1EndPsi')" title="Capture PSI">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <button type="button" class="btn-camera" onclick="openOcrModal('t1EndBoth')" title="Capture End gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-        </button>
       </div>
-      <div class="muted" style="font-size: 10px; margin-top: 4px;">Tap camera to capture BOTH gauges: Large → Inches, Small → PSI</div>
+      <div class="muted" style="font-size: 10px; margin-top: 4px;">Tap 📷 on each field to capture reading, or enter manually.</div>
 
       <div class="field" style="margin-top:6px;">
         <div class="muted">Allocated SCF</div>
@@ -1033,36 +1117,56 @@
       </div>
 
       <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
-        <div style="flex: 1; min-width: 55px;">
+        <div style="flex: 1; min-width: 80px;">
           <label class="muted required-label">Start Inches:</label>
-          <input id="t2StartInches" type="number" placeholder="0" />
+          <div class="field-with-camera">
+            <input id="t2StartInches" type="number" placeholder="0" />
+            <button type="button" class="btn-camera-sm" onclick="openOcrModal('t2StartInches')" title="Capture Inches">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <div style="flex: 1; min-width: 55px;">
+        <div style="flex: 1; min-width: 80px;">
           <label class="muted">Starting PSI:</label>
-          <input id="t2StartPsi" type="number" placeholder="0" />
+          <div class="field-with-camera">
+            <input id="t2StartPsi" type="number" placeholder="0" />
+            <button type="button" class="btn-camera-sm" onclick="openOcrModal('t2StartPsi')" title="Capture PSI">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <button type="button" class="btn-camera" onclick="openOcrModal('t2StartBoth')" title="Capture Start gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-        </button>
-        <div style="flex: 1; min-width: 55px;">
+        <div style="flex: 1; min-width: 80px;">
           <label class="muted required-label">End Inches:</label>
-          <input id="t2EndInches" type="number" placeholder="0" />
+          <div class="field-with-camera">
+            <input id="t2EndInches" type="number" placeholder="0" />
+            <button type="button" class="btn-camera-sm" onclick="openOcrModal('t2EndInches')" title="Capture Inches">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <div style="flex: 1; min-width: 55px;">
+        <div style="flex: 1; min-width: 80px;">
           <label class="muted">Ending PSI:</label>
-          <input id="t2EndPsi" type="number" placeholder="0" />
+          <div class="field-with-camera">
+            <input id="t2EndPsi" type="number" placeholder="0" />
+            <button type="button" class="btn-camera-sm" onclick="openOcrModal('t2EndPsi')" title="Capture PSI">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <button type="button" class="btn-camera" onclick="openOcrModal('t2EndBoth')" title="Capture End gauges" style="height: 44px; flex-shrink: 0; align-self: flex-end;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-        </button>
       </div>
-      <div class="muted" style="font-size: 10px; margin-top: 4px;">Tap camera to capture BOTH gauges: Large → Inches, Small → PSI</div>
+      <div class="muted" style="font-size: 10px; margin-top: 4px;">Tap 📷 on each field to capture reading, or enter manually.</div>
 
       <div class="field" style="margin-top:6px;">
         <div class="muted">Allocated SCF</div>
