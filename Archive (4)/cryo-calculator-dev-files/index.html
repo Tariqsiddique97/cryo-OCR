@@ -264,7 +264,7 @@
 
     <script>
       // API Configuration
-      const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyfwMSUkS8IqCz8PCQLN6sW_GN6MVnNV7YJN3Ft3AqithkrqUwvrjHPnqL1aZkhVdHi/exec";
+      const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbz71EeDIfIpZqu3rlQ_g8Lgo49oUVNiPUN7U_GQgxvUGNSSB-7bQ7sJXUvBb-iKEu8B/exec";
 
       // Splash + Login Gate
       window.addEventListener("load", () => {
@@ -493,6 +493,104 @@
             registerBtn.textContent = "Create Account";
           }
         });
+
+        // ===== Forgot Password Handling =====
+        const forgotModal = document.getElementById("forgotPasswordModal");
+        const forgotEmailEl = document.getElementById("forgotEmail");
+        const forgotErrEl = document.getElementById("forgotErr");
+        const forgotSuccessEl = document.getElementById("forgotSuccess");
+        const sendResetBtn = document.getElementById("sendResetBtn");
+
+        const showForgotErr = (msg) => {
+          if (!forgotErrEl) return;
+          forgotErrEl.textContent = msg;
+          forgotErrEl.style.display = "";
+          if (forgotSuccessEl) forgotSuccessEl.style.display = "none";
+        };
+        const hideForgotErr = () => {
+          if (!forgotErrEl) return;
+          forgotErrEl.style.display = "none";
+        };
+        const showForgotSuccess = (msg) => {
+          if (!forgotSuccessEl) return;
+          forgotSuccessEl.textContent = msg;
+          forgotSuccessEl.style.display = "";
+          if (forgotErrEl) forgotErrEl.style.display = "none";
+        };
+
+        // Show forgot password modal
+        document.getElementById("showForgotPassword")?.addEventListener("click", () => {
+          if (modal) modal.style.display = "none";
+          if (forgotModal) {
+            forgotModal.style.display = "flex";
+            // Reset state
+            if (forgotEmailEl) forgotEmailEl.value = "";
+            hideForgotErr();
+            if (forgotSuccessEl) forgotSuccessEl.style.display = "none";
+            if (sendResetBtn) {
+              sendResetBtn.disabled = false;
+              sendResetBtn.textContent = "Send Reset Link";
+            }
+          }
+        });
+
+        // Back to login from forgot password
+        document.getElementById("backToLogin")?.addEventListener("click", () => {
+          if (forgotModal) forgotModal.style.display = "none";
+          if (modal) modal.style.display = "flex";
+        });
+
+        // Allow enter key to submit forgot password
+        forgotEmailEl?.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") sendResetBtn?.click();
+        });
+
+        // Send reset link
+        sendResetBtn?.addEventListener("click", async () => {
+          hideForgotErr();
+          const email = (forgotEmailEl?.value || "").trim();
+
+          if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            showForgotErr("Enter a valid email address.");
+            return;
+          }
+
+          // Disable button and show loading
+          sendResetBtn.disabled = true;
+          sendResetBtn.textContent = "Sending...";
+
+          try {
+            const response = await fetch(API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain",
+              },
+              body: JSON.stringify({
+                action: "requestReset",
+                email: email,
+                origin: window.location.origin,
+              }),
+              redirect: "follow",
+            });
+
+            const data = await response.json();
+
+            if (data.ok) {
+              showForgotSuccess(data.message || "If an account exists with this email, you will receive a reset link.");
+              sendResetBtn.textContent = "Email Sent";
+              // Keep button disabled after success
+            } else {
+              showForgotErr(data.error || "Failed to send reset email. Please try again.");
+              sendResetBtn.disabled = false;
+              sendResetBtn.textContent = "Send Reset Link";
+            }
+          } catch (err) {
+            console.error("Reset request error:", err);
+            showForgotErr("Network error. Please check your connection and try again.");
+            sendResetBtn.disabled = false;
+            sendResetBtn.textContent = "Send Reset Link";
+          }
+        });
       });
     </script>
 
@@ -540,6 +638,10 @@
 
         <div id="loginErr" class="err" style="display: none; margin-bottom: 16px"></div>
 
+        <div style="text-align: right; margin-bottom: 12px">
+          <button id="showForgotPassword" type="button" class="link-btn" style="font-size: 13px">Forgot Password?</button>
+        </div>
+
         <div class="btn-row">
           <button id="loginSkip" type="button" class="btn-clear">Continue as Guest</button>
           <button id="loginBtn" type="button" class="btn-primary">Login</button>
@@ -548,6 +650,43 @@
         <div class="divider">
           <span class="muted">Don't have an account?</span>
           <button id="showRegister" type="button" class="link-btn">Create Account</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Forgot Password Modal ===== -->
+    <div
+      id="forgotPasswordModal"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      "
+    >
+      <div class="modal-card">
+        <div class="modal-title">Reset Password</div>
+        <div class="modal-subtitle">Enter your email address and we'll send you a link to reset your password.</div>
+
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="forgotEmail" type="email" placeholder="you@email.com" class="form-input" />
+        </div>
+
+        <div id="forgotErr" class="err" style="display: none; margin-bottom: 16px"></div>
+        <div
+          id="forgotSuccess"
+          class="success-msg"
+          style="display: none; margin-bottom: 16px; color: #16a34a; background: #f0fdf4; padding: 12px; border-radius: 8px; font-size: 14px"
+        ></div>
+
+        <div class="btn-row">
+          <button id="backToLogin" type="button" class="btn-clear">Back to Login</button>
+          <button id="sendResetBtn" type="button" class="btn-primary">Send Reset Link</button>
         </div>
       </div>
     </div>

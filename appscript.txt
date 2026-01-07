@@ -27,12 +27,25 @@ const CONFIG = {
   // Gemini API Key for OCR
   GEMINI_API_KEY: "AIzaSyCQuNf48yYC7ylH8xst51bgGq_fwg-Zjhs",
 
+  // Resend API Key for password reset emails
+  RESEND_API_KEY: "re_WZHvj7Cf_FdaDqgkHyzYo5rAuRgsSGi1e",
+
+  // Password reset token expiry (15 minutes)
+  RESET_TOKEN_TTL_SECONDS: 60 * 15,
+
+  // App URLs for reset links
+  APP_URLS: {
+    LOCALHOST: "http://127.0.0.1:8080",
+    PRODUCTION: "https://cryo-calculator.netlify.app"
+  },
+
   // Sheet names
   SHEETS: {
     USERS: "users",
     CALC: "calc_records",
     SPLIT: "split_records",
     RESERVE: "reserve_records",
+    RESET_TOKENS: "reset_tokens", // for password reset tokens
     AUDIT: "audit_log" // optional
   }
 };
@@ -162,6 +175,14 @@ function doPost(e) {
 
       case "ocr":
         result = handleOcr_(body, true);
+        break;
+
+      case "requestReset":
+        result = handleRequestReset_(body, true);
+        break;
+
+      case "resetPassword":
+        result = handleResetPassword_(body, true);
         break;
 
       default:
@@ -763,6 +784,298 @@ If you cannot read the value clearly, respond with: VALUE=ERROR`;
   } catch (err) {
     safeAudit_("OCR_FAIL", { reason: "exception", error: String(err) });
     return respond({ ok: false, error: "OCR processing failed: " + String(err) }, 500);
+  }
+}
+
+/** ====== PASSWORD RESET ====== **/
+/**
+ * Handle password reset request - generates token and sends email via Resend
+ * POST { action: "requestReset", email: "user@email.com", origin: "http://..." }
+ */
+function handleRequestReset_(body, returnObject) {
+  const email = String(body.email || "").trim().toLowerCase();
+  const origin = String(body.origin || "").trim();
+
+  // Helper to return result based on returnObject flag
+  const respond = (obj, status) => {
+    obj.status = status || 200;
+    return returnObject ? obj : jsonResponse(obj, status);
+  };
+
+  if (!email) {
+    return respond({ ok: false, error: "Email is required" }, 400);
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return respond({ ok: false, error: "Invalid email format" }, 400);
+  }
+
+  const ss = getSpreadsheet_();
+  const usersSheet = ss.getSheetByName(CONFIG.SHEETS.USERS);
+  if (!usersSheet) return respond({ ok: false, error: "System error" }, 500);
+
+  // Check if user exists
+  const { rows } = readSheetAsObjects_(usersSheet);
+  const user = rows.find(r => String(r.email || "").trim().toLowerCase() === email);
+
+  // Always return success to prevent email enumeration attacks
+  // But only actually send email if user exists
+  if (!user) {
+    safeAudit_("RESET_REQUEST_FAIL", { email, reason: "no_user" });
+    // Return success anyway to prevent enumeration
+    return respond({ ok: true, message: "If an account exists with this email, you will receive a reset link." });
+  }
+
+  // Generate reset token
+  const resetToken = generateResetToken_();
+  const expiresAt = new Date(Date.now() + CONFIG.RESET_TOKEN_TTL_SECONDS * 1000).toISOString();
+
+  // Store token in reset_tokens sheet
+  const tokensSheet = getOrCreateResetTokensSheet_(ss);
+
+  // Remove any existing tokens for this email (one active token per user)
+  clearExistingTokens_(tokensSheet, email);
+
+  // Add new token
+  appendObjectToSheet_(tokensSheet, {
+    email: email,
+    token: resetToken,
+    expires_at: expiresAt,
+    created_at: new Date().toISOString(),
+    used: false
+  });
+
+  // Determine the correct base URL
+  const baseUrl = determineBaseUrl_(origin);
+  const resetLink = `${baseUrl}/reset-password.html?token=${resetToken}&email=${encodeURIComponent(email)}`;
+
+  // Send email via Resend
+  const emailResult = sendResetEmail_(email, resetLink);
+
+  if (!emailResult.ok) {
+    safeAudit_("RESET_EMAIL_FAIL", { email, error: emailResult.error });
+    return respond({ ok: false, error: "Failed to send reset email. Please try again." }, 500);
+  }
+
+  safeAudit_("RESET_REQUEST_OK", { email });
+  return respond({ ok: true, message: "If an account exists with this email, you will receive a reset link." });
+}
+
+/**
+ * Handle password reset - validates token and updates password
+ * POST { action: "resetPassword", email: "user@email.com", token: "xxx", newPassword: "xxx" }
+ */
+function handleResetPassword_(body, returnObject) {
+  const email = String(body.email || "").trim().toLowerCase();
+  const token = String(body.token || "").trim();
+  const newPassword = String(body.newPassword || "");
+
+  // Helper to return result based on returnObject flag
+  const respond = (obj, status) => {
+    obj.status = status || 200;
+    return returnObject ? obj : jsonResponse(obj, status);
+  };
+
+  if (!email || !token || !newPassword) {
+    return respond({ ok: false, error: "Missing required fields" }, 400);
+  }
+
+  if (newPassword.length < 6) {
+    return respond({ ok: false, error: "Password must be at least 6 characters" }, 400);
+  }
+
+  const ss = getSpreadsheet_();
+
+  // Validate token
+  const tokensSheet = ss.getSheetByName(CONFIG.SHEETS.RESET_TOKENS);
+  if (!tokensSheet) {
+    return respond({ ok: false, error: "Invalid or expired reset link" }, 400);
+  }
+
+  const { rows: tokenRows } = readSheetAsObjects_(tokensSheet);
+  const tokenRecord = tokenRows.find(r =>
+    String(r.email || "").trim().toLowerCase() === email &&
+    String(r.token || "") === token &&
+    String(r.used || "").toLowerCase() !== "true"
+  );
+
+  if (!tokenRecord) {
+    safeAudit_("RESET_PASSWORD_FAIL", { email, reason: "invalid_token" });
+    return respond({ ok: false, error: "Invalid or expired reset link" }, 400);
+  }
+
+  // Check if token is expired
+  const expiresAt = new Date(tokenRecord.expires_at);
+  if (new Date() > expiresAt) {
+    safeAudit_("RESET_PASSWORD_FAIL", { email, reason: "expired_token" });
+    return respond({ ok: false, error: "Reset link has expired. Please request a new one." }, 400);
+  }
+
+  // Update user's password
+  const usersSheet = ss.getSheetByName(CONFIG.SHEETS.USERS);
+  if (!usersSheet) return respond({ ok: false, error: "System error" }, 500);
+
+  const { headerMap, rows: userRows } = readSheetAsObjects_(usersSheet);
+  const passwordColIndex = headerMap["password_hash"];
+
+  if (passwordColIndex === undefined) {
+    return respond({ ok: false, error: "System error" }, 500);
+  }
+
+  // Find user row and update password
+  let userRowNum = -1;
+  for (let i = 0; i < userRows.length; i++) {
+    if (String(userRows[i].email || "").trim().toLowerCase() === email) {
+      userRowNum = i + 2; // +2 for header row and 0-index
+      break;
+    }
+  }
+
+  if (userRowNum === -1) {
+    return respond({ ok: false, error: "User not found" }, 400);
+  }
+
+  // Update password hash
+  const newPasswordHash = sha256Base64_(newPassword);
+  usersSheet.getRange(userRowNum, passwordColIndex + 1).setValue(newPasswordHash);
+
+  // Mark token as used
+  markTokenAsUsed_(tokensSheet, email, token);
+
+  safeAudit_("RESET_PASSWORD_OK", { email });
+  return respond({ ok: true, message: "Password has been reset successfully. You can now login with your new password." });
+}
+
+/**
+ * Generate a secure random reset token
+ */
+function generateResetToken_() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 64; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+/**
+ * Determine base URL based on request origin
+ */
+function determineBaseUrl_(origin) {
+  if (!origin) return CONFIG.APP_URLS.PRODUCTION;
+
+  // Check if request is from localhost
+  if (origin.includes('127.0.0.1') || origin.includes('localhost')) {
+    return CONFIG.APP_URLS.LOCALHOST;
+  }
+
+  return CONFIG.APP_URLS.PRODUCTION;
+}
+
+/**
+ * Get or create reset_tokens sheet
+ */
+function getOrCreateResetTokensSheet_(ss) {
+  let sheet = ss.getSheetByName(CONFIG.SHEETS.RESET_TOKENS);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.SHEETS.RESET_TOKENS);
+    // Add headers
+    sheet.getRange(1, 1, 1, 5).setValues([["email", "token", "expires_at", "created_at", "used"]]);
+  }
+  return sheet;
+}
+
+/**
+ * Clear existing tokens for an email
+ */
+function clearExistingTokens_(tokensSheet, email) {
+  const { rows } = readSheetAsObjects_(tokensSheet);
+  // Delete rows in reverse order to avoid index shifting
+  const rowsToDelete = [];
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i].email || "").trim().toLowerCase() === email) {
+      rowsToDelete.push(i + 2); // +2 for header and 0-index
+    }
+  }
+  rowsToDelete.reverse().forEach(rowNum => {
+    tokensSheet.deleteRow(rowNum);
+  });
+}
+
+/**
+ * Mark a token as used
+ */
+function markTokenAsUsed_(tokensSheet, email, token) {
+  const { headerMap, rows } = readSheetAsObjects_(tokensSheet);
+  const usedColIndex = headerMap["used"];
+
+  if (usedColIndex === undefined) return;
+
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i].email || "").trim().toLowerCase() === email &&
+        String(rows[i].token || "") === token) {
+      tokensSheet.getRange(i + 2, usedColIndex + 1).setValue(true);
+      break;
+    }
+  }
+}
+
+/**
+ * Send password reset email via Resend API
+ */
+function sendResetEmail_(toEmail, resetLink) {
+  const apiUrl = "https://api.resend.com/emails";
+
+  const emailHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #003366;">Reset Your Password</h2>
+      <p>You requested to reset your password for Cryo Calculator.</p>
+      <p>Click the button below to reset your password. This link will expire in 15 minutes.</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${resetLink}"
+           style="background: #0066cc; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+          Reset Password
+        </a>
+      </div>
+      <p style="color: #666; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
+      <p style="color: #666; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
+      <p style="color: #0066cc; font-size: 12px; word-break: break-all;">${resetLink}</p>
+      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+      <p style="color: #999; font-size: 12px;">Cryo Calculator - Precision cryogenic transfer tool</p>
+    </div>
+  `;
+
+  const payload = {
+    from: "Cryo Calculator <onboarding@resend.dev>",
+    to: [toEmail],
+    subject: "Reset Your Password - Cryo Calculator",
+    html: emailHtml
+  };
+
+  const options = {
+    method: "post",
+    contentType: "application/json",
+    headers: {
+      "Authorization": "Bearer " + CONFIG.RESEND_API_KEY
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  try {
+    const response = UrlFetchApp.fetch(apiUrl, options);
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+
+    if (responseCode === 200 || responseCode === 201) {
+      return { ok: true };
+    } else {
+      const errorData = JSON.parse(responseText);
+      return { ok: false, error: errorData.message || "Failed to send email" };
+    }
+  } catch (err) {
+    return { ok: false, error: String(err) };
   }
 }
 
