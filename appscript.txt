@@ -1047,7 +1047,7 @@ function sendResetEmail_(toEmail, resetLink) {
   `;
 
   const payload = {
-    from: "Cryo Calculator <onboarding@resend.dev>",
+    from: "Cryo Calculator <noreply@cryocalculator.com>",
     to: [toEmail],
     subject: "Reset Your Password - Cryo Calculator",
     html: emailHtml
