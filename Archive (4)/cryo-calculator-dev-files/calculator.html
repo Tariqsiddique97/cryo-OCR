@@ -916,10 +916,21 @@
             <!-- Timer + Flow -->
             <label>
               Timer (optional):
-              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px">
-                <button id="btnStart" type="button" class="btn-primary">Start Timer</button>
-                <button id="btnStop" type="button" class="btn-clear" disabled>Stop Timer</button>
-                <span class="inline mono" id="elapsed">Elapsed: 00:00:00</span>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; justify-content: space-between;">
+                <div>
+                  <button id="btnStart" type="button" class="btn-primary">Start Timer</button>
+                  <button id="btnStop" type="button" class="btn-clear" disabled>Stop Timer</button>
+                  <span class="inline mono" id="elapsed">Elapsed: 00:00:00</span>
+                </div>
+                 <div class="field-with-camera" style="min-width: 130px; max-width: 178px;">
+                  <input id="meteredScf" type="number" placeholder="Metered SCF" style="font-size: 14px;" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('meteredScf')" title="Capture Meter">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div class="muted">Use the timer and average flow to estimate transfer. You can also estimate the tank diameter from timer data.</div>
             </label>
@@ -2628,10 +2639,12 @@
             capacity_unit: document.getElementById("capUnit")?.value || "",
             gas: document.getElementById("gas")?.value || "",
             flow_value: document.getElementById("flowValue")?.value || "",
+            metered_scf: document.getElementById("meteredScf")?.value || "",
             timer_elapsed: document.getElementById("elapsed")?.textContent || "",
             result_text: cleanResultText(output.textContent).substring(0, 800) + " • " +
                    "Starting (in)/PSI: " + (document.getElementById("startInches")?.value || "-") + " | " + (document.getElementById("startPsi")?.value || "-") + " • " +
-                   "Ending (in)/PSI: " + (document.getElementById("endInches")?.value || "-") + " | " + (document.getElementById("endPsi")?.value || "-"),
+                   "Ending (in)/PSI: " + (document.getElementById("endInches")?.value || "-") + " | " + (document.getElementById("endPsi")?.value || "-") +
+                   (document.getElementById("meteredScf")?.value ? " • Metered: " + document.getElementById("meteredScf")?.value + " SCF" : ""),
             timestamp: new Date().toISOString()
           };
 
@@ -2971,6 +2984,9 @@
           if (Number.isFinite(flowVal)) flowGPM = isLbMode() ? flowVal / gas.lbPerGal : flowVal;
           const flowScfMin = flowGPM ? flowGPM * gas.scfPerGal : null;
 
+          // Metered SCF from truck flow meter
+          const meteredScf = parseFloat(document.getElementById("meteredScf")?.value);
+
           const wantEstimateD = document.getElementById("chkEstimateD")?.checked;
           const useTimerPrimary = document.getElementById("useTimerPrimary")?.checked;
 
@@ -3087,7 +3103,12 @@
             if (tankType === "laydown" && (Number.isFinite(usedD) || Number.isFinite(cylD))) {
               html += `<p>Diameter used: <b>${(Number.isFinite(cylD) ? cylD : usedD).toFixed(2)} in</b>${estNote || ""}</p>`;
             }
-            if (Number.isFinite(scfPerInchShown)) html += `<p>Approx. SCF per inch (local): ${scfPerInchShown.toFixed(2)}</p>`;
+          }
+          // Show metered SCF comparison if user entered/captured a meter reading
+          if (Number.isFinite(meteredScf) && meteredScf > 0) {
+            const meteredDiff = scf - meteredScf;
+            const meteredPct = meteredScf === 0 ? 0 : ((scf - meteredScf) / meteredScf) * 100;
+            html += `<p>Truck Meter: <b>${meteredScf.toFixed(0)} SCF</b> &nbsp;|&nbsp; Δ: <b>${meteredDiff >= 0 ? '+' : ''}${meteredDiff.toFixed(0)} SCF</b> (${meteredPct >= 0 ? '+' : ''}${meteredPct.toFixed(1)}%)</p>`;
           }
           if (compLine) html += `<p>${compLine}</p>`;
 
@@ -3117,7 +3138,7 @@
 
         /* ----- CLEAR (exposed for button onclick) ----- */
         window.clearForm = function () {
-          ["fullInches", "fullCap", "startInches", "endInches", "startPsi", "endPsi", "flowValue", "geoDiameter", "geoLength"].forEach((id) => {
+          ["fullInches", "fullCap", "startInches", "endInches", "startPsi", "endPsi", "flowValue", "geoDiameter", "geoLength", "meteredScf"].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.value = "";
           });
@@ -3586,6 +3607,7 @@
           "startPsi",
           "endPsi",
           "flowValue",
+          "meteredScf",
           "chkEstimateD",
           "useTimerPrimary",
           // Split pane
@@ -3884,6 +3906,10 @@
               fieldId === 't1StartInches' || fieldId === 't1EndInches' ||
               fieldId === 't2StartInches' || fieldId === 't2EndInches') {
             return 'level';
+          }
+          // Totalizer/meter reading (truck flow meter)
+          if (fieldId === 'meteredScf') {
+            return 'totalizer';
           }
           // Default to level for unknown fields
           return 'level';
