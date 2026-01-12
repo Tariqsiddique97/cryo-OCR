@@ -4,8 +4,8 @@
  * Endpoints:
  *   GET  ?action=ping
  *   POST { action:"login", email, password }
- *   POST { action:"save", type:"calc|split|reserve", token, record:{} }
- *   POST { action:"fetch", type:"calc|split|reserve|all", token, limit }
+ *   POST { action:"save", type:"calc|split|reserve|cryo_notes", token, record:{} }
+ *   POST { action:"fetch", type:"calc|split|reserve|cryo_notes|all", token, limit }
  *
  * Deployment:
  *   Deploy as Web App:
@@ -36,7 +36,7 @@ const CONFIG = {
   // App URLs for reset links
   APP_URLS: {
     LOCALHOST: "http://127.0.0.1:8080",
-    PRODUCTION: "https://cryo-calculator.netlify.app"
+    PRODUCTION: "https://cryocalculator.com"
   },
 
   // Sheet names
@@ -45,6 +45,7 @@ const CONFIG = {
     CALC: "calc_records",
     SPLIT: "split_records",
     RESERVE: "reserve_records",
+    CRYO_NOTES: "cryo_notes",
     RESET_TOKENS: "reset_tokens", // for password reset tokens
     AUDIT: "audit_log" // optional
   }
@@ -370,7 +371,7 @@ function handleSave_(body, returnObject) {
 
   if (!token) return respond({ ok: false, error: "Missing token" }, 401);
   if (!record) return respond({ ok: false, error: "Missing record" }, 400);
-  if (!["calc", "split", "reserve"].includes(type)) {
+  if (!["calc", "split", "reserve", "cryo_notes"].includes(type)) {
     return respond({ ok: false, error: "Invalid record type" }, 400);
   }
 
@@ -381,6 +382,7 @@ function handleSave_(body, returnObject) {
   const sheetName =
     type === "calc" ? CONFIG.SHEETS.CALC :
     type === "split" ? CONFIG.SHEETS.SPLIT :
+    type === "cryo_notes" ? CONFIG.SHEETS.CRYO_NOTES :
     CONFIG.SHEETS.RESERVE;
 
   const sheet = ss.getSheetByName(sheetName);
@@ -423,17 +425,18 @@ function handleFetch_(body, returnObject) {
   const userId = auth.payload.user_id;
 
   const typesToFetch = (type === "all")
-    ? ["calc", "split", "reserve"]
+    ? ["calc", "split", "reserve", "cryo_notes"]
     : [type];
 
   const result = {};
 
   typesToFetch.forEach(t => {
-    if (!["calc", "split", "reserve"].includes(t)) return;
+    if (!["calc", "split", "reserve", "cryo_notes"].includes(t)) return;
 
     const sheetName =
       t === "calc" ? CONFIG.SHEETS.CALC :
       t === "split" ? CONFIG.SHEETS.SPLIT :
+      t === "cryo_notes" ? CONFIG.SHEETS.CRYO_NOTES :
       CONFIG.SHEETS.RESERVE;
 
     const sheet = ss.getSheetByName(sheetName);
@@ -472,7 +475,7 @@ function handleDelete_(body, returnObject) {
 
   if (!token) return respond({ ok: false, error: "Missing token" }, 401);
   if (!recordId) return respond({ ok: false, error: "Missing record_id" }, 400);
-  if (!["calc", "split", "reserve"].includes(type)) {
+  if (!["calc", "split", "reserve", "cryo_notes"].includes(type)) {
     return respond({ ok: false, error: "Invalid record type" }, 400);
   }
 
@@ -483,6 +486,7 @@ function handleDelete_(body, returnObject) {
   const sheetName =
     type === "calc" ? CONFIG.SHEETS.CALC :
     type === "split" ? CONFIG.SHEETS.SPLIT :
+    type === "cryo_notes" ? CONFIG.SHEETS.CRYO_NOTES :
     CONFIG.SHEETS.RESERVE;
 
   const sheet = ss.getSheetByName(sheetName);
@@ -561,7 +565,7 @@ function handleDeleteBulk_(body, returnObject) {
     const type = String(r.type || "").trim().toLowerCase();
     const recordId = String(r.record_id || "").trim();
     if (!type || !recordId) return;
-    if (!["calc", "split", "reserve"].includes(type)) return;
+    if (!["calc", "split", "reserve", "cryo_notes"].includes(type)) return;
     if (!byType[type]) byType[type] = [];
     byType[type].push(recordId);
   });
@@ -572,6 +576,7 @@ function handleDeleteBulk_(body, returnObject) {
     const sheetName =
       type === "calc" ? CONFIG.SHEETS.CALC :
       type === "split" ? CONFIG.SHEETS.SPLIT :
+      type === "cryo_notes" ? CONFIG.SHEETS.CRYO_NOTES :
       CONFIG.SHEETS.RESERVE;
 
     const sheet = ss.getSheetByName(sheetName);
@@ -1322,6 +1327,9 @@ function createAnotherUser() {
 
 // reserve_records
 // record_id | user_id | timestamp | reserve_amount | gas | remaining | warning_flag | result_text | source
+
+// cryo_notes
+// record_id | user_id | timestamp | gas | tank_id | start_inches | starting_psi | end_inches | ending_psi | metered_scf | meter_scale | result_text | source
 
 // audit_log (optional)
 // timestamp | event_type | data_json

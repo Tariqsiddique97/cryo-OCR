@@ -2741,7 +2741,7 @@
         };
 
         /* ----- API Configuration ----- */
-        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbw5AZLzKYSVNfIReDcnPh-RX5hit_DPybIOnlKlgwnFdUeKywfhdHQOr687dLd_sUml/exec";
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwrb3d-OvJUtUCkvMMnwlFRnFeeE4EQUcFMYykUewWpme8f_0lTSs6DteWwGelBPbGD/exec";
 
         function getAuth() {
           try {
@@ -3966,7 +3966,7 @@
         // Uses the same API_ENDPOINT from constant.js or inline definition
         const OCR_API_ENDPOINT = typeof API_ENDPOINT !== 'undefined'
           ? API_ENDPOINT
-          : "https://script.google.com/macros/s/AKfycbw5AZLzKYSVNfIReDcnPh-RX5hit_DPybIOnlKlgwnFdUeKywfhdHQOr687dLd_sUml/exec";
+          : "https://script.google.com/macros/s/AKfycbwrb3d-OvJUtUCkvMMnwlFRnFeeE4EQUcFMYykUewWpme8f_0lTSs6DteWwGelBPbGD/exec";
 
         // DOM Elements
         const modal = document.getElementById('ocrModal');
@@ -4411,9 +4411,102 @@ ${meterHtml}</pre>`;
           if (els.convertBox) els.convertBox.textContent = "Enter a value and choose FROM/TO units…";
         });
 
-        // Save - placeholder
-        document.getElementById("notesSaveBtn")?.addEventListener("click", () => {
-          alert("Save functionality - stores record locally.");
+        // Save to Excel sheet (cryo_notes)
+        document.getElementById("notesSaveBtn")?.addEventListener("click", async () => {
+          // API endpoint (same as main calculator)
+          const NOTES_API_ENDPOINT = "https://script.google.com/macros/s/AKfycbwrb3d-OvJUtUCkvMMnwlFRnFeeE4EQUcFMYykUewWpme8f_0lTSs6DteWwGelBPbGD/exec";
+
+          // Get auth from localStorage (same as getAuth function)
+          let auth = null;
+          try {
+            auth = JSON.parse(localStorage.getItem("cryo_auth") || "null");
+          } catch (e) {
+            auth = null;
+          }
+
+          const notesSaveBtn = document.getElementById("notesSaveBtn");
+
+          if (!auth || !auth.token) {
+            alert("Please login to save records.\n\nReload the app and login with your credentials.");
+            return;
+          }
+
+          // Check if summary has been computed
+          const summaryText = els.summaryBox?.textContent || "";
+          if (!summaryText || summaryText.includes("Summary will appear here")) {
+            alert("Please compute the summary first before saving.");
+            return;
+          }
+
+          // Collect field values
+          const gas = els.gasSelect?.value || "";
+          const tank_id = els.tankId?.value?.trim() || "";
+          const start_inches = els.startIn?.value || "";
+          const starting_psi = els.startPsi?.value || "";
+          const end_inches = els.endIn?.value || "";
+          const ending_psi = els.endPsi?.value || "";
+          const metered_scf = els.meteredScf?.value || "";
+          const meter_scale = els.meterScale?.value || "1";
+
+          // Validate - at least tank_id should be filled
+          if (!tank_id) {
+            alert("Please enter a Tank ID before saving.");
+            return;
+          }
+
+          // Build single-line result_text for storage (like other calculators)
+          let resultText = `Gas: ${gas} • Tank ID: ${tank_id} • Start Inches: ${start_inches || 0} • End Inches: ${end_inches || 0} • PSI: Start=${starting_psi || 0} | End=${ending_psi || 0}`;
+          if (metered_scf) {
+            resultText += ` • Metered SCF: ${metered_scf} (Scale: x${meter_scale})`;
+          }
+
+          // Build record object matching Excel sheet columns
+          const record = {
+            gas: gas,
+            tank_id: tank_id,
+            start_inches: start_inches,
+            starting_psi: starting_psi,
+            end_inches: end_inches,
+            ending_psi: ending_psi,
+            metered_scf: metered_scf,
+            meter_scale: meter_scale,
+            result_text: resultText,
+            timestamp: new Date().toISOString()
+          };
+
+          // Disable button and show loading
+          notesSaveBtn.disabled = true;
+          notesSaveBtn.textContent = "Saving...";
+
+          try {
+            const response = await fetch(NOTES_API_ENDPOINT, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain"
+              },
+              body: JSON.stringify({
+                action: "save",
+                type: "cryo_notes",
+                token: auth.token,
+                record: record
+              }),
+              redirect: "follow"
+            });
+
+            const data = await response.json();
+
+            if (data.ok) {
+              alert("✓ Cryo Notes saved successfully!");
+            } else {
+              alert("Save failed: " + (data.error || "Unknown error"));
+            }
+          } catch (err) {
+            console.error("Save error:", err);
+            alert("Network error. Please check your connection.");
+          } finally {
+            notesSaveBtn.disabled = false;
+            notesSaveBtn.textContent = "💾 Save";
+          }
         });
 
         // Records - placeholder
