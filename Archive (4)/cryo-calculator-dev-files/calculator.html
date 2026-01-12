@@ -31,7 +31,7 @@
       }
       .panes {
         display: flex;
-        width: 300vw;
+        width: 400vw;
         height: 100%;
         transform: translateX(0);
         transition: transform 0.25s ease-out;
@@ -41,6 +41,9 @@
       }
       .panes[data-index="2"] {
         transform: translateX(-200vw);
+      }
+      .panes[data-index="3"] {
+        transform: translateX(-300vw);
       }
       .pane {
         width: 100vw;
@@ -778,6 +781,170 @@
   <body>
     <div class="viewport" id="viewport">
       <div class="panes" id="panes" data-index="0">
+        <!-- === PAGE: CRYO NOTES START === -->
+        <section class="pane" id="pane-notes">
+          <div class="page">
+            <h1>Cryo Notes</h1>
+            <div class="muted">Digital field log for cryogenic transfers. Tap 📷 on each field to capture reading via OCR, or enter values manually.</div>
+
+            <div class="row2">
+              <label>
+                Select Gas:
+                <select id="notesGasSelect">
+                  <option value="LIN">LIN (Nitrogen)</option>
+                  <option value="LOX">LOX (Oxygen)</option>
+                  <option value="LAR">LAR (Argon)</option>
+                  <option value="LCO2">LCO₂ (Liquid CO₂)</option>
+                </select>
+              </label>
+              <label>
+                Tank ID:
+                <div class="field-with-camera">
+                  <input id="notesTankId" type="text" placeholder="Tank ID" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesTankId')" title="Capture Tank ID">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
+              </label>
+            </div>
+
+            <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
+              <div style="flex: 1; min-width: 80px;">
+                <label>Start Inches:</label>
+                <div class="field-with-camera">
+                  <input id="notesStartIn" type="number" inputmode="decimal" placeholder="0" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesStartIn')" title="Capture Inches">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div style="flex: 1; min-width: 80px;">
+                <label>Starting PSI:</label>
+                <div class="field-with-camera">
+                  <input id="notesStartPsi" type="number" inputmode="decimal" placeholder="0" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesStartPsi')" title="Capture PSI">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div style="flex: 1; min-width: 80px;">
+                <label>End Inches:</label>
+                <div class="field-with-camera">
+                  <input id="notesEndIn" type="number" inputmode="decimal" placeholder="0" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesEndIn')" title="Capture Inches">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div style="flex: 1; min-width: 80px;">
+                <label>Ending PSI:</label>
+                <div class="field-with-camera">
+                  <input id="notesEndPsi" type="number" inputmode="decimal" placeholder="0" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesEndPsi')" title="Capture PSI">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <label>
+              Total Metered SCF:
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <div class="field-with-camera" style="flex: 1;">
+                  <input id="notesMeteredScf" type="number" inputmode="decimal" placeholder="Metered SCF" />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesMeteredScf')" title="Capture Meter">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
+                <select id="notesMeterScale" style="width: auto;">
+                  <option value="1">x1</option>
+                  <option value="10">x10</option>
+                  <option value="100">x100</option>
+                </select>
+              </div>
+              <div class="muted">SCF is 100x if stated on meter. Select the appropriate scale.</div>
+            </label>
+
+            <div class="actions">
+              <button class="btn-primary" type="button" id="notesComputeBtn">Compute Summary</button>
+              <button class="btn-clear" type="button" id="notesClearBtn">Clear</button>
+              <button type="button" class="btn-ghost" id="notesSaveBtn">💾 Save</button>
+              <button type="button" class="btn-ghost" id="notesRecordsBtn">📋 Records</button>
+              <button type="button" class="btn-primary" onclick="window.goToCalc()">Cryo Cal →</button>
+              <button id="logoutNotes" class="btn-danger" type="button">Logout</button>
+            </div>
+
+            <div class="result" id="notesSummaryBox">Summary will appear here…</div>
+
+            <!-- Unit Conversion Section -->
+            <h2 style="font-size: 18px; font-weight: 700; margin: 24px 0 8px;">Unit Conversion</h2>
+            <div class="muted">Convert between SCF, Gallons, and Pounds for any gas type.</div>
+
+            <div class="row2">
+              <label>
+                Value:
+                <input id="notesConvValue" type="number" inputmode="decimal" placeholder="Enter number" />
+              </label>
+              <label>
+                Select Gas:
+                <select id="notesConvGas">
+                  <option value="LIN">LIN (Nitrogen)</option>
+                  <option value="LOX">LOX (Oxygen)</option>
+                  <option value="LAR">LAR (Argon)</option>
+                  <option value="LCO2">LCO₂ (Liquid CO₂)</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="row2">
+              <label>
+                Convert FROM:
+                <select id="notesFromUnit">
+                  <option value="SCF">SCF</option>
+                  <option value="GAL">GALLONS</option>
+                  <option value="LB">POUNDS</option>
+                </select>
+              </label>
+              <label>
+                Convert TO:
+                <select id="notesToUnit">
+                  <option value="GAL">GALLONS</option>
+                  <option value="SCF">SCF</option>
+                  <option value="LB">POUNDS</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="actions">
+              <button class="btn-ghost" type="button" id="notesSwapUnitsBtn">⇄ Swap</button>
+              <button class="btn-primary" type="button" id="notesConvertBtn">Convert</button>
+              <button class="btn-clear" type="button" id="notesConvertClearBtn">Clear</button>
+            </div>
+
+            <div class="result" id="notesConvertBox">Enter a value and choose FROM/TO units…</div>
+            <div class="muted">Uses standard published reference conversions (SCF/gal and lb/gal). Actual results can vary with conditions.</div>
+          </div>
+        </section>
+        <!-- === PAGE: CRYO NOTES END === -->
+
         <!-- === PAGE: CALCULATOR START === -->
         <section class="pane" id="pane-calc">
           <div class="page">
@@ -972,7 +1139,7 @@
               <button class="btn-clear" type="button" onclick="clearForm()">Clear</button>
               <button type="button" class="btn-ghost" onclick="saveCalculation()" id="btnSave">💾 Save</button>
               <button type="button" class="btn-ghost" onclick="window.location.href='records.html?t=' + Date.now()" id="btnHistory">📋 Records</button>
-              <button type="button" class="btn-ghost" onclick="window.location.href='Cryo-p1v2-1.html'">← Cryo Notes</button>
+              <button type="button" class="btn-ghost" onclick="window.goToNotes()">← Cryo Notes</button>
               <button type="button" class="btn-primary" onclick="window.goToSplit()">→ Split</button>
               <button id="logoutCalc" class="btn-danger" type="button">Logout</button>
             </div>
@@ -1269,7 +1436,7 @@
       <button id="resClear" class="btn-primary" type="button">Clear</button>
       <button type="button" class="btn-ghost" onclick="saveReserve()" id="btnSaveReserve">💾 Save</button>
       <button type="button" class="btn-ghost" onclick="window.location.href='records.html?t=' + Date.now()" id="btnHistoryReserve">📋 Records</button>
-      <button class="btn-ghost" type="button" onclick="window.goToCalc()">← Home</button>
+      <button class="btn-ghost" type="button" onclick="window.goToNotes()">← Home</button>
       <button id="logout" class="btn-danger" type="button" >Logout</button>
     </div>
   </div>
@@ -1394,6 +1561,7 @@
           <span class="dot active" id="d0"></span>
           <span class="dot" id="d1"></span>
           <span class="dot" id="d2"></span>
+          <span class="dot" id="d3"></span>
         </span>
       </div>
     </div>
@@ -3371,7 +3539,7 @@
 
     <div class="sticky-actions">
       <button id="resClear" class="btn-primary" type="button">Clear</button>
-      <button class="btn-ghost" type="button" onclick="window.goToCalc()">← Home</button>
+      <button class="btn-ghost" type="button" onclick="window.goToNotes()">← Home</button>
     </div>
   </div>
 </section>
@@ -3497,19 +3665,24 @@
         if (!/([?&])test=1(?!\d)/.test(location.search)) return;
         console.log("[TEST] Starting UI nav tests");
         try {
+          console.assert(typeof window.goToNotes === "function", "goToNotes should be a function");
+          console.assert(typeof window.goToCalc === "function", "goToCalc should be a function");
           console.assert(typeof window.goToSplit === "function", "goToSplit should be a function");
           console.assert(typeof window.goToReserve === "function", "goToReserve should be a function");
-          console.assert(typeof window.goToCalc === "function", "goToCalc should be a function");
-          window.goToSplit();
+          window.goToCalc();
           setTimeout(() => {
-            console.assert(document.getElementById("panes").getAttribute("data-index") === "1", "Should be on Split pane");
-            window.goToReserve();
+            console.assert(document.getElementById("panes").getAttribute("data-index") === "1", "Should be on Calc pane");
+            window.goToSplit();
             setTimeout(() => {
-              console.assert(document.getElementById("panes").getAttribute("data-index") === "2", "Should be on Reserve pane");
-              window.goToCalc();
+              console.assert(document.getElementById("panes").getAttribute("data-index") === "2", "Should be on Split pane");
+              window.goToReserve();
               setTimeout(() => {
-                console.assert(document.getElementById("panes").getAttribute("data-index") === "0", "Should be on Calc pane");
-                console.log("[TEST] Navigation tests passed");
+                console.assert(document.getElementById("panes").getAttribute("data-index") === "3", "Should be on Reserve pane");
+                window.goToNotes();
+                setTimeout(() => {
+                  console.assert(document.getElementById("panes").getAttribute("data-index") === "0", "Should be on Notes pane");
+                  console.log("[TEST] Navigation tests passed");
+                }, 50);
               }, 50);
             }, 50);
           }, 50);
@@ -3524,12 +3697,12 @@
       (function () {
         const panes = document.getElementById("panes");
         const viewport = document.getElementById("viewport");
-        const dots = [document.getElementById("d0"), document.getElementById("d1"), document.getElementById("d2")];
+        const dots = [document.getElementById("d0"), document.getElementById("d1"), document.getElementById("d2"), document.getElementById("d3")];
 
         let index = Number(panes?.dataset.index || 0);
 
         function setIndex(i) {
-          index = Math.max(0, Math.min(2, i));
+          index = Math.max(0, Math.min(3, i));
           if (panes) panes.setAttribute("data-index", String(index));
           dots.forEach((d, k) => {
             if (d) d.classList.toggle("active", k === index);
@@ -3537,9 +3710,10 @@
         }
 
         // Expose for buttons
-        window.goToCalc = () => setIndex(0);
-        window.goToSplit = () => setIndex(1);
-        window.goToReserve = () => setIndex(2);
+        window.goToNotes = () => setIndex(0);
+        window.goToCalc = () => setIndex(1);
+        window.goToSplit = () => setIndex(2);
+        window.goToReserve = () => setIndex(3);
 
         // Swipe handling
         let startX = 0,
@@ -3769,10 +3943,12 @@
         const logoutBtn = document.getElementById("logout");
         const logoutCalcBtn = document.getElementById("logoutCalc");
         const logoutSplitBtn = document.getElementById("logoutSplit");
+        const logoutNotesBtn = document.getElementById("logoutNotes");
 
         if (logoutBtn) logoutBtn.addEventListener("click", handleLogout);
         if (logoutCalcBtn) logoutCalcBtn.addEventListener("click", handleLogout);
         if (logoutSplitBtn) logoutSplitBtn.addEventListener("click", handleLogout);
+        if (logoutNotesBtn) logoutNotesBtn.addEventListener("click", handleLogout);
       })();
     </script>
     <!-- === SCRIPTS: LOCALSTORAGE PERSISTENCE END === -->
@@ -4147,5 +4323,153 @@
       })();
     </script>
     <!-- === SCRIPTS: OCR PSI CAPTURE END === -->
+
+    <!-- === SCRIPTS: CRYO NOTES START === -->
+    <script>
+      (function() {
+        // Gas conversion constants
+        const NOTES_GASES = {
+          LIN:  { SCF_PER_GAL: 93.11,  LB_PER_GAL: 6.747 },
+          LOX:  { SCF_PER_GAL: 115.1,  LB_PER_GAL: 9.528 },
+          LAR:  { SCF_PER_GAL: 112.92, LB_PER_GAL: 11.63 },
+          LCO2: { SCF_PER_GAL: 73.94,  LB_PER_GAL: 8.46  },
+        };
+
+        // Helper functions
+        function num(v) { return (v === "" || v === null || v === undefined) ? NaN : Number(v); }
+
+        // DOM elements
+        const els = {
+          gasSelect: document.getElementById("notesGasSelect"),
+          tankId: document.getElementById("notesTankId"),
+          startIn: document.getElementById("notesStartIn"),
+          startPsi: document.getElementById("notesStartPsi"),
+          endIn: document.getElementById("notesEndIn"),
+          endPsi: document.getElementById("notesEndPsi"),
+          meteredScf: document.getElementById("notesMeteredScf"),
+          meterScale: document.getElementById("notesMeterScale"),
+          summaryBox: document.getElementById("notesSummaryBox"),
+          convValue: document.getElementById("notesConvValue"),
+          convGas: document.getElementById("notesConvGas"),
+          fromUnit: document.getElementById("notesFromUnit"),
+          toUnit: document.getElementById("notesToUnit"),
+          convertBox: document.getElementById("notesConvertBox"),
+        };
+
+        // Compute Summary
+        document.getElementById("notesComputeBtn")?.addEventListener("click", () => {
+          const gas = els.gasSelect?.value || "LIN";
+          const tankId = els.tankId?.value?.trim() || "(blank)";
+          const startInches = num(els.startIn?.value);
+          const endInches = num(els.endIn?.value);
+          const startPsi = num(els.startPsi?.value) || 0;
+          const endPsi = num(els.endPsi?.value) || 0;
+          const meteredDisplayed = num(els.meteredScf?.value);
+          const meterScale = Number(els.meterScale?.value) || 1;
+
+          let meterHtml = "";
+          if (Number.isFinite(meteredDisplayed)) {
+            const meteredActual = meteredDisplayed * meterScale;
+            meterHtml = `
+Meter-derived:
+  Displayed SCF: ${meteredDisplayed}
+  Scale: x${meterScale}
+  Actual SCF: ${meteredActual.toFixed(2)}`;
+          } else {
+            meterHtml = `
+Meter-derived:
+  Meter SCF missing.`;
+          }
+
+          els.summaryBox.innerHTML = `<pre style="margin:0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; line-height: 1.5;">FIELD SUMMARY
+Gas: ${gas}
+Tank ID: ${tankId}
+Start Inches (stored): ${startInches || 0}
+End Inches (stored): ${endInches || 0}
+
+PSI (stored): Start PSI=${startPsi} | End PSI=${endPsi}
+${meterHtml}</pre>`;
+        });
+
+        // Clear
+        document.getElementById("notesClearBtn")?.addEventListener("click", () => {
+          if (els.tankId) els.tankId.value = "";
+          if (els.startIn) els.startIn.value = "0";
+          if (els.startPsi) els.startPsi.value = "0";
+          if (els.endIn) els.endIn.value = "0";
+          if (els.endPsi) els.endPsi.value = "0";
+          if (els.meteredScf) els.meteredScf.value = "";
+          if (els.meterScale) els.meterScale.value = "1";
+          if (els.summaryBox) els.summaryBox.textContent = "Summary will appear here…";
+          if (els.convValue) els.convValue.value = "";
+          if (els.convertBox) els.convertBox.textContent = "Enter a value and choose FROM/TO units…";
+        });
+
+        // Save - placeholder
+        document.getElementById("notesSaveBtn")?.addEventListener("click", () => {
+          alert("Save functionality - stores record locally.");
+        });
+
+        // Records - placeholder
+        document.getElementById("notesRecordsBtn")?.addEventListener("click", () => {
+          window.location.href = 'records.html?t=' + Date.now();
+        });
+
+        // Unit Conversion
+        document.getElementById("notesConvertBtn")?.addEventListener("click", () => {
+          const gas = els.convGas?.value || "LIN";
+          const fromUnit = els.fromUnit?.value || "SCF";
+          const toUnit = els.toUnit?.value || "GAL";
+          const inputVal = num(els.convValue?.value);
+          const cfg = NOTES_GASES[gas];
+
+          if (!Number.isFinite(inputVal)) {
+            els.convertBox.innerHTML = `<pre style="margin:0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; line-height: 1.5;">ERROR: Please enter a valid number.</pre>`;
+            return;
+          }
+
+          if (fromUnit === toUnit) {
+            els.convertBox.innerHTML = `<pre style="margin:0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; line-height: 1.5;">FROM and TO are the same unit.
+Result: ${inputVal} ${toUnit}</pre>`;
+            return;
+          }
+
+          // Convert to gallons first (base unit)
+          let gallons;
+          if (fromUnit === "GAL") gallons = inputVal;
+          else if (fromUnit === "SCF") gallons = inputVal / cfg.SCF_PER_GAL;
+          else if (fromUnit === "LB") gallons = inputVal / cfg.LB_PER_GAL;
+
+          // Convert from gallons to target
+          let outputVal;
+          if (toUnit === "GAL") outputVal = gallons;
+          else if (toUnit === "SCF") outputVal = gallons * cfg.SCF_PER_GAL;
+          else if (toUnit === "LB") outputVal = gallons * cfg.LB_PER_GAL;
+
+          els.convertBox.innerHTML = `<pre style="margin:0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; line-height: 1.5;">CONVERSION
+  Gas: ${gas}
+  FROM: ${inputVal} ${fromUnit}
+  TO:   ${outputVal.toFixed(6)} ${toUnit}
+
+REFERENCE CONSTANTS
+  SCF/gal: ${cfg.SCF_PER_GAL}
+  lb/gal:  ${cfg.LB_PER_GAL}</pre>`;
+        });
+
+        // Swap Units
+        document.getElementById("notesSwapUnitsBtn")?.addEventListener("click", () => {
+          const from = els.fromUnit?.value;
+          els.fromUnit.value = els.toUnit?.value;
+          els.toUnit.value = from;
+        });
+
+        // Clear Convert
+        document.getElementById("notesConvertClearBtn")?.addEventListener("click", () => {
+          if (els.convValue) els.convValue.value = "";
+          if (els.convertBox) els.convertBox.textContent = "Enter a value and choose FROM/TO units…";
+        });
+      })();
+    </script>
+    <!-- === SCRIPTS: CRYO NOTES END === -->
   </body>
 </html>
