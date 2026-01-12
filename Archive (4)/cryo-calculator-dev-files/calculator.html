@@ -661,45 +661,23 @@
         }
       }
 
-      /* === OCR Modal Styles === */
+      /* === OCR Modal Styles - Full Screen Camera === */
       .ocr-modal {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.6);
+        background: #000;
         display: none;
-        align-items: center;
-        justify-content: center;
+        flex-direction: column;
         z-index: 2000;
-        padding: 16px;
       }
       .ocr-modal.open {
         display: flex;
       }
-      .ocr-card {
-        width: min(480px, 100%);
-        max-height: 90vh;
-        background: Canvas;
-        color: CanvasText;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        overflow-y: auto;
-      }
-      .ocr-card h3 {
-        margin: 0 0 12px;
-        font-size: 20px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
+      /* Full screen camera view */
       .ocr-live {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 4/3;
+        position: absolute;
+        inset: 0;
         background: #000;
-        border-radius: 12px;
-        overflow: hidden;
-        margin-bottom: 12px;
       }
       .ocr-live video,
       .ocr-live canvas {
@@ -715,58 +693,148 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #666;
+        color: #999;
+        font-size: 16px;
+      }
+      /* Top bar with cancel and title */
+      .ocr-topbar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        padding-top: max(16px, env(safe-area-inset-top));
+        background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+        z-index: 10;
+      }
+      .ocr-topbar h3 {
+        margin: 0;
+        font-size: 18px;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ocr-topbar .btn-close {
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: #fff;
+        font-size: 16px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+      }
+      /* Bottom controls area */
+      .ocr-bottom {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 20px;
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+        background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        z-index: 10;
+      }
+      .ocr-hint {
+        text-align: center;
+        color: rgba(255,255,255,0.8);
         font-size: 14px;
+        margin-bottom: 16px;
       }
       .ocr-controls {
         display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
+        gap: 12px;
+        justify-content: center;
+        margin-bottom: 16px;
       }
+      .ocr-controls button {
+        min-width: 100px;
+      }
+      /* Capture button - large circular */
+      .ocr-capture-btn {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: #fff;
+        border: 4px solid rgba(255,255,255,0.3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        transition: transform 0.1s;
+      }
+      .ocr-capture-btn:active {
+        transform: scale(0.95);
+      }
+      .ocr-capture-btn.retake {
+        background: rgba(255,255,255,0.2);
+        border-color: rgba(255,255,255,0.4);
+        color: #fff;
+        font-size: 14px;
+      }
+      /* Result overlay */
       .ocr-result {
-        background: #f0fdf4;
-        border: 1px solid #86efac;
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 12px;
+        background: rgba(22, 163, 74, 0.95);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
         display: none;
+        text-align: center;
       }
       .ocr-result.show {
         display: block;
       }
       .ocr-result.error {
-        background: #fef2f2;
-        border-color: #fca5a5;
+        background: rgba(220, 38, 38, 0.95);
       }
       .ocr-result-label {
         font-size: 12px;
-        color: #666;
+        color: rgba(255,255,255,0.8);
         margin-bottom: 4px;
       }
       .ocr-result-value {
-        font-size: 28px;
+        font-size: 36px;
         font-weight: 700;
-        color: #16a34a;
+        color: #fff;
       }
       .ocr-result.error .ocr-result-value {
         font-size: 14px;
-        color: #dc2626;
       }
+      /* Action buttons row */
       .ocr-actions {
         display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        border-top: 1px solid #e5e7eb;
-        padding-top: 12px;
+        gap: 12px;
+        justify-content: center;
       }
+      .ocr-actions button {
+        flex: 1;
+        max-width: 160px;
+        padding: 14px 20px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 12px;
+      }
+      .ocr-actions .btn-ghost {
+        background: rgba(255,255,255,0.2);
+        color: #fff;
+        border: none;
+      }
+      .ocr-actions .btn-primary {
+        background: #16a34a;
+        color: #fff;
+      }
+      /* Loading overlay */
       .ocr-loading {
         display: none;
         align-items: center;
         justify-content: center;
         gap: 10px;
         padding: 20px;
-        color: #666;
+        color: #fff;
       }
       .ocr-loading.show {
         display: flex;
@@ -774,8 +842,8 @@
       .ocr-spinner {
         width: 24px;
         height: 24px;
-        border: 3px solid #e5e7eb;
-        border-top-color: #1a73e8;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-top-color: #fff;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
       }
@@ -1904,40 +1972,34 @@
         <div class="hm-actions">
           <button id="hmClose" class="btn-ghost" type="button">Close</button>
         </div>
-
-        <div class="hm-muted" style="margin-top: 6px">
-          Measurements are auto-populated on the Cryo Calculator page. Manual entry is still allowed.
-        </div>
       </div>
     </div>
     <!-- === PAGE: MEASURE MODAL END === -->
 
     <!-- === OCR PSI CAPTURE MODAL START === -->
     <div id="ocrModal" class="ocr-modal" role="dialog" aria-modal="true" aria-labelledby="ocrTitle">
-      <div class="ocr-card">
+      <!-- Full Screen Camera View -->
+      <div class="ocr-live">
+        <video id="ocrVideo" playsinline autoplay muted></video>
+        <canvas id="ocrCanvas" style="display: none;"></canvas>
+        <div class="ocr-placeholder" id="ocrPlaceholder">Starting camera...</div>
+      </div>
+
+      <!-- Top Bar -->
+      <div class="ocr-topbar">
         <h3 id="ocrTitle">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
             <circle cx="12" cy="13" r="4"/>
           </svg>
           Capture Reading
         </h3>
-        <p class="muted" style="margin: 0 0 12px;">
-          Point your camera at the gauge or meter and tap <b>Capture</b> to auto-read the value.
-        </p>
+        <button id="ocrCancel" type="button" class="btn-close">✕ Close</button>
+      </div>
 
-        <!-- Camera View -->
-        <div class="ocr-live">
-          <video id="ocrVideo" playsinline autoplay muted></video>
-          <canvas id="ocrCanvas" style="display: none;"></canvas>
-          <div class="ocr-placeholder" id="ocrPlaceholder">Starting camera...</div>
-        </div>
-
-        <!-- Controls -->
-        <div class="ocr-controls">
-          <button id="ocrCapture" type="button" class="btn-primary" style="background: #16a34a;">📷 Capture</button>
-          <button id="ocrRetake" type="button" class="btn-ghost" style="display: none;">Retake</button>
-        </div>
+      <!-- Bottom Controls -->
+      <div class="ocr-bottom">
+        <p class="ocr-hint">Point camera at gauge and tap the button to capture</p>
 
         <!-- Loading State -->
         <div id="ocrLoading" class="ocr-loading">
@@ -1951,9 +2013,15 @@
           <div class="ocr-result-value" id="ocrResultValue">--</div>
         </div>
 
-        <!-- Actions -->
-        <div class="ocr-actions">
-          <button id="ocrCancel" type="button" class="btn-ghost">Cancel</button>
+        <!-- Capture/Retake Controls -->
+        <div class="ocr-controls">
+          <button id="ocrCapture" type="button" class="ocr-capture-btn" title="Capture">📷</button>
+          <button id="ocrRetake" type="button" class="ocr-capture-btn retake" style="display: none;">↺ Retake</button>
+        </div>
+
+        <!-- Actions (shown after capture) -->
+        <div class="ocr-actions" id="ocrActions" style="display: none;">
+          <button id="ocrRetakeAlt" type="button" class="btn-ghost">Retake</button>
           <button id="ocrApply" type="button" class="btn-primary" disabled>Apply Value</button>
         </div>
       </div>
@@ -4049,8 +4117,10 @@
         const placeholder = document.getElementById('ocrPlaceholder');
         const btnCapture = document.getElementById('ocrCapture');
         const btnRetake = document.getElementById('ocrRetake');
+        const btnRetakeAlt = document.getElementById('ocrRetakeAlt');
         const btnCancel = document.getElementById('ocrCancel');
         const btnApply = document.getElementById('ocrApply');
+        const actionsDiv = document.getElementById('ocrActions');
         const loadingDiv = document.getElementById('ocrLoading');
         const resultDiv = document.getElementById('ocrResult');
         const resultValue = document.getElementById('ocrResultValue');
@@ -4078,8 +4148,10 @@
           detectedValue = null;
           detectedInches = null;
           detectedPsi = null;
+          btnCapture.style.display = 'flex';
           btnCapture.disabled = true;
           btnRetake.style.display = 'none';
+          actionsDiv.style.display = 'none';
           btnApply.disabled = true;
           loadingDiv.classList.remove('show');
           resultDiv.classList.remove('show', 'error');
@@ -4133,8 +4205,8 @@
           // Show captured image
           video.style.display = 'none';
           canvas.style.display = 'block';
-          btnCapture.disabled = true;
-          btnRetake.style.display = 'inline-block';
+          btnCapture.style.display = 'none';
+          actionsDiv.style.display = 'flex';
 
           // Stop camera to save resources
           stopCamera();
@@ -4406,7 +4478,8 @@
         // Retake photo
         function retake() {
           canvas.style.display = 'none';
-          btnRetake.style.display = 'none';
+          btnCapture.style.display = 'flex';
+          actionsDiv.style.display = 'none';
           resultDiv.classList.remove('show', 'error');
           btnApply.disabled = true;
           startCamera();
@@ -4415,13 +4488,12 @@
         // Event listeners
         btnCapture.addEventListener('click', captureAndRead);
         btnRetake.addEventListener('click', retake);
+        if (btnRetakeAlt) btnRetakeAlt.addEventListener('click', retake);
         btnCancel.addEventListener('click', closeModal);
         btnApply.addEventListener('click', applyValue);
 
-        // Close on backdrop click
-        modal.addEventListener('click', (e) => {
-          if (e.target === modal) closeModal();
-        });
+        // Note: Removed backdrop click to close since modal is full screen
+        // User must use the Close button or Escape key
 
         // Close on Escape key
         document.addEventListener('keydown', (e) => {
