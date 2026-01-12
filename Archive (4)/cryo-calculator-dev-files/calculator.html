@@ -2839,8 +2839,12 @@
             return;
           }
 
-          if (!output || !output.textContent || output.textContent.includes("Enter values")) {
-            alert("Please calculate something first before saving.");
+          // Compute and display first
+          window.calculate();
+
+          // Check if calculation produced valid output
+          if (!output || !output.textContent || output.textContent.includes("Enter values") || output.textContent.includes("Please enter")) {
+            alert("Cannot save - please ensure all required fields are filled.");
             return;
           }
 
@@ -2928,11 +2932,16 @@
             return;
           }
 
+          // Compute and display first
+          if (typeof window.calcSplit === "function") {
+            window.calcSplit();
+          }
+
           const t1SCF = document.getElementById("t1SCF")?.value || "";
           const t2SCF = document.getElementById("t2SCF")?.value || "";
 
           if (!t1SCF || !t2SCF || t1SCF === "0" || t2SCF === "0") {
-            alert("Please calculate the split first before saving.");
+            alert("Cannot save - please ensure Total SCF and both tank inch ranges are filled.");
             return;
           }
 
@@ -3009,10 +3018,15 @@
             return;
           }
 
+          // Compute and display first
+          if (typeof window.calcReserve === "function") {
+            window.calcReserve();
+          }
+
           const remaining = document.getElementById("resRemaining")?.value || "";
 
           if (!remaining || remaining === "0") {
-            alert("Please calculate the reserve first before saving.");
+            alert("Cannot save - please enter Amount and select Gas type first.");
             return;
           }
 
@@ -3495,7 +3509,7 @@
   /* ----------------------------
      Split Calculation (Proportional Method - Version B)
   -----------------------------*/
-  function calcSplit() {
+  window.calcSplit = function calcSplit() {
     const scf = num(totalSCF.value.replace(/,/g, ""));
     const d1 = Math.max(0, num(t1EndInches.value) - num(t1StartInches.value));
     const d2 = Math.max(0, num(t2EndInches.value) - num(t2StartInches.value));
@@ -3629,7 +3643,7 @@
   /* ----------------------------------------
      UPDATE BUTTON — POUNDS → SCF or SCF direct
   -----------------------------------------*/
-  $("resUpdate").addEventListener("click", () => {
+  window.calcReserve = function() {
     const amt = toNum($("resAmount").value);
     const type = $("resInputType").value;
     const gasKey = $("resGas").value;
@@ -3656,7 +3670,9 @@
     $("resRemaining").value = maxSCF.toLocaleString();
 
     recomputeRemaining();
-  });
+  };
+
+  $("resUpdate").addEventListener("click", window.calcReserve);
 
   /* ----------------------------------------
      RECOMPUTE REMAINING SCF (4 tanks)
@@ -4449,8 +4465,8 @@
           convertBox: document.getElementById("notesConvertBox"),
         };
 
-        // Compute Summary
-        document.getElementById("notesComputeBtn")?.addEventListener("click", () => {
+        // Compute Summary Function (reusable)
+        function computeNotesSummary() {
           const gas = els.gasSelect?.value || "LIN";
           const tankId = els.tankId?.value?.trim() || "(blank)";
           const startInches = num(els.startIn?.value);
@@ -4482,7 +4498,10 @@ End Inches (stored): ${endInches || 0}
 
 PSI (stored): Start PSI=${startPsi} | End PSI=${endPsi}
 ${meterHtml}</pre>`;
-        });
+        }
+
+        // Compute Summary button
+        document.getElementById("notesComputeBtn")?.addEventListener("click", computeNotesSummary);
 
         // Clear
         document.getElementById("notesClearBtn")?.addEventListener("click", () => {
@@ -4518,12 +4537,8 @@ ${meterHtml}</pre>`;
             return;
           }
 
-          // Check if summary has been computed
-          const summaryText = els.summaryBox?.textContent || "";
-          if (!summaryText || summaryText.includes("Summary will appear here")) {
-            alert("Please compute the summary first before saving.");
-            return;
-          }
+          // Compute and display summary first
+          computeNotesSummary();
 
           // Collect field values
           const gas = els.gasSelect?.value || "";
