@@ -900,6 +900,64 @@
 
             <div class="result" id="notesSummaryBox">Summary will appear here…</div>
 
+            <!-- Captured Gage Images Section with Toggle -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin: 24px 0 8px;">
+              <h2 style="font-size: 18px; font-weight: 700; margin: 0;">Captured Gage Images</h2>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+                <span class="muted">Show</span>
+                <input type="checkbox" id="notesGageToggle" checked style="display: none;">
+                <span style="
+                  position: relative;
+                  width: 44px;
+                  height: 24px;
+                  background: #cbd5e1;
+                  border-radius: 12px;
+                  transition: background 0.2s;
+                " id="notesGageToggleTrack">
+                  <span style="
+                    position: absolute;
+                    top: 2px;
+                    left: 2px;
+                    width: 20px;
+                    height: 20px;
+                    background: #fff;
+                    border-radius: 50%;
+                    transition: transform 0.2s;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                  " id="notesGageToggleKnob"></span>
+                </span>
+              </label>
+            </div>
+            <div class="muted" id="notesGageDesc">Images captured using the 📷 buttons above will appear here.</div>
+
+            <!-- Gage Image Thumbnails -->
+            <div id="notesGageThumbs" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+              <div style="flex: 1; min-width: 80px;">
+                <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px;">Start Inches</div>
+                <div style="background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4/3;">
+                  <canvas id="notesThumbStartIn" style="display: block; width: 100%; height: 100%;"></canvas>
+                </div>
+              </div>
+              <div style="flex: 1; min-width: 80px;">
+                <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px;">Starting PSI</div>
+                <div style="background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4/3;">
+                  <canvas id="notesThumbStartPsi" style="display: block; width: 100%; height: 100%;"></canvas>
+                </div>
+              </div>
+              <div style="flex: 1; min-width: 80px;">
+                <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px;">End Inches</div>
+                <div style="background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4/3;">
+                  <canvas id="notesThumbEndIn" style="display: block; width: 100%; height: 100%;"></canvas>
+                </div>
+              </div>
+              <div style="flex: 1; min-width: 80px;">
+                <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px;">Ending PSI</div>
+                <div style="background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4/3;">
+                  <canvas id="notesThumbEndPsi" style="display: block; width: 100%; height: 100%;"></canvas>
+                </div>
+              </div>
+            </div>
+
             <!-- Unit Conversion Section -->
             <h2 style="font-size: 18px; font-weight: 700; margin: 24px 0 8px;">Unit Conversion</h2>
             <div class="muted">Convert between SCF, Gallons, and Pounds for any gas type.</div>
@@ -4290,6 +4348,35 @@
               field.dispatchEvent(new Event('change', { bubbles: true }));
             }
           }
+
+          // Save captured image to Cryo Notes thumbnails if applicable
+          const notesThumbMap = {
+            'notesStartIn': 'notesThumbStartIn',
+            'notesStartPsi': 'notesThumbStartPsi',
+            'notesEndIn': 'notesThumbEndIn',
+            'notesEndPsi': 'notesThumbEndPsi'
+          };
+          const thumbCanvasId = notesThumbMap[targetFieldId];
+          if (thumbCanvasId && canvas.width > 0) {
+            const thumbCanvas = document.getElementById(thumbCanvasId);
+            if (thumbCanvas) {
+              const container = thumbCanvas.parentElement;
+              const w = container.clientWidth || 150;
+              const h = Math.round(w * 3 / 4);
+              thumbCanvas.width = w;
+              thumbCanvas.height = h;
+              const tctx = thumbCanvas.getContext('2d');
+              tctx.clearRect(0, 0, w, h);
+              // Draw captured image (from OCR canvas) to thumbnail
+              const scale = Math.min(w / canvas.width, h / canvas.height);
+              const dw = canvas.width * scale;
+              const dh = canvas.height * scale;
+              const dx = (w - dw) / 2;
+              const dy = (h - dh) / 2;
+              tctx.drawImage(canvas, dx, dy, dw, dh);
+            }
+          }
+
           closeModal();
         }
 
@@ -4567,6 +4654,52 @@ REFERENCE CONSTANTS
           if (els.convValue) els.convValue.value = "";
           if (els.convertBox) els.convertBox.textContent = "Enter a value and choose FROM/TO units…";
         });
+
+        // Clear gage thumbnails when Clear button is clicked
+        const thumbCanvases = [
+          document.getElementById("notesThumbStartIn"),
+          document.getElementById("notesThumbStartPsi"),
+          document.getElementById("notesThumbEndIn"),
+          document.getElementById("notesThumbEndPsi")
+        ];
+        document.getElementById("notesClearBtn")?.addEventListener("click", () => {
+          thumbCanvases.forEach(canvas => {
+            if (canvas) {
+              const ctx = canvas.getContext("2d");
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+          });
+        });
+
+        // Gage Images Toggle functionality
+        const gageToggle = document.getElementById("notesGageToggle");
+        const gageToggleTrack = document.getElementById("notesGageToggleTrack");
+        const gageToggleKnob = document.getElementById("notesGageToggleKnob");
+        const gageDesc = document.getElementById("notesGageDesc");
+        const gageThumbs = document.getElementById("notesGageThumbs");
+
+        function updateGageToggleVisuals(isChecked) {
+          if (gageToggleTrack) {
+            gageToggleTrack.style.background = isChecked ? "#3b82f6" : "#cbd5e1";
+          }
+          if (gageToggleKnob) {
+            gageToggleKnob.style.transform = isChecked ? "translateX(20px)" : "translateX(0)";
+          }
+          if (gageDesc) {
+            gageDesc.style.display = isChecked ? "block" : "none";
+          }
+          if (gageThumbs) {
+            gageThumbs.style.display = isChecked ? "flex" : "none";
+          }
+        }
+
+        // Initialize toggle state (checked by default)
+        if (gageToggle) {
+          updateGageToggleVisuals(gageToggle.checked);
+          gageToggle.addEventListener("change", () => {
+            updateGageToggleVisuals(gageToggle.checked);
+          });
+        }
       })();
     </script>
     <!-- === SCRIPTS: CRYO NOTES END === -->
