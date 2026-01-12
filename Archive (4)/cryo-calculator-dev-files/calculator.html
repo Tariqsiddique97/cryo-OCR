@@ -625,6 +625,12 @@
         max-width: none;
       }
 
+      /* === Cryo Notes label line break on mobile === */
+      .mobile-break { display: block; }
+      @media (min-width: 480px) {
+        .mobile-break { display: inline; }
+      }
+
       /* === Split Calculator - field widths (tablet only) === */
       @media (min-width: 768px) {
         /* Total Amount row - reduce field widths */
@@ -813,7 +819,7 @@
 
             <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
               <div style="flex: 1; min-width: 80px;">
-                <label>Start Inches:</label>
+                <label>Start <span class="mobile-break">Inches:</span></label>
                 <div class="field-with-camera">
                   <input id="notesStartIn" type="number" inputmode="decimal" placeholder="0" />
                   <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesStartIn')" title="Capture Inches">
@@ -825,7 +831,7 @@
                 </div>
               </div>
               <div style="flex: 1; min-width: 80px;">
-                <label>Starting PSI:</label>
+                <label>Starting <span class="mobile-break">PSI:</span></label>
                 <div class="field-with-camera">
                   <input id="notesStartPsi" type="number" inputmode="decimal" placeholder="0" />
                   <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesStartPsi')" title="Capture PSI">
@@ -837,7 +843,7 @@
                 </div>
               </div>
               <div style="flex: 1; min-width: 80px;">
-                <label>End Inches:</label>
+                <label>End <span class="mobile-break">Inches:</span></label>
                 <div class="field-with-camera">
                   <input id="notesEndIn" type="number" inputmode="decimal" placeholder="0" />
                   <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesEndIn')" title="Capture Inches">
@@ -849,7 +855,7 @@
                 </div>
               </div>
               <div style="flex: 1; min-width: 80px;">
-                <label>Ending PSI:</label>
+                <label>Ending <span class="mobile-break">PSI:</span></label>
                 <div class="field-with-camera">
                   <input id="notesEndPsi" type="number" inputmode="decimal" placeholder="0" />
                   <button type="button" class="btn-camera-sm" onclick="openOcrModal('notesEndPsi')" title="Capture PSI">
@@ -1028,7 +1034,7 @@
 
             <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
               <div style="flex: 1; min-width: 80px;">
-                <label>Start Inches:</label>
+                <label>Start <span class="mobile-break">Inches:</span></label>
                 <div class="field-with-camera">
                   <input id="startInches" type="number" placeholder="0" />
                   <button type="button" class="btn-camera-sm" onclick="openOcrModal('startInches')" title="Capture Inches">
@@ -1040,7 +1046,7 @@
                 </div>
               </div>
               <div style="flex: 1; min-width: 80px;">
-                <label>Starting PSI:</label>
+                <label>Starting <span class="mobile-break">PSI:</span></label>
                 <div class="field-with-camera">
                   <input id="startPsi" type="number" placeholder="0" />
                   <button type="button" class="btn-camera-sm" onclick="openOcrModal('startPsi')" title="Capture PSI">
@@ -1052,7 +1058,7 @@
                 </div>
               </div>
               <div style="flex: 1; min-width: 80px;">
-                <label>End Inches:</label>
+                <label>End <span class="mobile-break">Inches:</span></label>
                 <div class="field-with-camera">
                   <input id="endInches" type="number" placeholder="0" />
                   <button type="button" class="btn-camera-sm" onclick="openOcrModal('endInches')" title="Capture Inches">
@@ -1064,7 +1070,7 @@
                 </div>
               </div>
               <div style="flex: 1; min-width: 80px;">
-                <label>Ending PSI:</label>
+                <label>Ending <span class="mobile-break">PSI:</span></label>
                 <div class="field-with-camera">
                   <input id="endPsi" type="number" placeholder="0" />
                   <button type="button" class="btn-camera-sm" onclick="openOcrModal('endPsi')" title="Capture PSI">
@@ -1224,7 +1230,7 @@
 
       <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
         <div style="flex: 1; min-width: 80px;">
-          <label class="muted required-label">Start Inches:</label>
+          <label class="muted required-label">Start <span class="mobile-break">Inches:</span></label>
           <div class="field-with-camera">
             <input id="t1StartInches" type="number" placeholder="0" />
             <button type="button" class="btn-camera-sm" onclick="openOcrModal('t1StartInches')" title="Capture Inches">
@@ -1236,7 +1242,7 @@
           </div>
         </div>
         <div style="flex: 1; min-width: 80px;">
-          <label class="muted">Starting PSI:</label>
+          <label class="muted">Starting <span class="mobile-break">PSI:</span></label>
           <div class="field-with-camera">
             <input id="t1StartPsi" type="number" placeholder="0" />
             <button type="button" class="btn-camera-sm" onclick="openOcrModal('t1StartPsi')" title="Capture PSI">
@@ -1248,7 +1254,7 @@
           </div>
         </div>
         <div style="flex: 1; min-width: 80px;">
-          <label class="muted required-label">End Inches:</label>
+          <label class="muted required-label">End <span class="mobile-break">Inches:</span></label>
           <div class="field-with-camera">
             <input id="t1EndInches" type="number" placeholder="0" />
             <button type="button" class="btn-camera-sm" onclick="openOcrModal('t1EndInches')" title="Capture Inches">
@@ -1260,7 +1266,7 @@
           </div>
         </div>
         <div style="flex: 1; min-width: 80px;">
-          <label class="muted">Ending PSI:</label>
+          <label class="muted">Ending <span class="mobile-break">PSI:</span></label>
           <div class="field-with-camera">
             <input id="t1EndPsi" type="number" placeholder="0" />
             <button type="button" class="btn-camera-sm" onclick="openOcrModal('t1EndPsi')" title="Capture PSI">
@@ -1297,7 +1303,7 @@
 
       <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto;">
         <div style="flex: 1; min-width: 80px;">
-          <label class="muted required-label">Start Inches:</label>
+          <label class="muted required-label">Start <span class="mobile-break">Inches:</span></label>
           <div class="field-with-camera">
             <input id="t2StartInches" type="number" placeholder="0" />
             <button type="button" class="btn-camera-sm" onclick="openOcrModal('t2StartInches')" title="Capture Inches">
@@ -1309,7 +1315,7 @@
           </div>
         </div>
         <div style="flex: 1; min-width: 80px;">
-          <label class="muted">Starting PSI:</label>
+          <label class="muted">Starting <span class="mobile-break">PSI:</span></label>
           <div class="field-with-camera">
             <input id="t2StartPsi" type="number" placeholder="0" />
             <button type="button" class="btn-camera-sm" onclick="openOcrModal('t2StartPsi')" title="Capture PSI">
@@ -1321,7 +1327,7 @@
           </div>
         </div>
         <div style="flex: 1; min-width: 80px;">
-          <label class="muted required-label">End Inches:</label>
+          <label class="muted required-label">End <span class="mobile-break">Inches:</span></label>
           <div class="field-with-camera">
             <input id="t2EndInches" type="number" placeholder="0" />
             <button type="button" class="btn-camera-sm" onclick="openOcrModal('t2EndInches')" title="Capture Inches">
@@ -1333,7 +1339,7 @@
           </div>
         </div>
         <div style="flex: 1; min-width: 80px;">
-          <label class="muted">Ending PSI:</label>
+          <label class="muted">Ending <span class="mobile-break">PSI:</span></label>
           <div class="field-with-camera">
             <input id="t2EndPsi" type="number" placeholder="0" />
             <button type="button" class="btn-camera-sm" onclick="openOcrModal('t2EndPsi')" title="Capture PSI">
