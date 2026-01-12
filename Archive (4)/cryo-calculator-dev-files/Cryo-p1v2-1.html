@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cryo Cal – Page 1 (Field Log + Unit Convert)</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --card:#ffffff;
+      --btn:#2563eb;
+      --btnText:#ffffff;
+      --danger:#ef4444;
+      --orange:#f97316;
+      --shadow: 0 6px 18px rgba(0,0,0,.06);
+      --radius:14px;
+      --fieldRadius:12px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    html,body{background:var(--bg); color:var(--text); font-family:var(--font); margin:0;}
+    .wrap{max-width:1040px; margin:0 auto; padding:22px 18px 56px;}
+    .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px;}
+    .row{display:grid; grid-template-columns: 1.3fr 1fr; gap:18px;}
+    @media (max-width: 880px){ .row{grid-template-columns:1fr;} }
+    .grid{display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:14px; align-items:end;}
+    @media (max-width: 880px){ .grid{grid-template-columns: repeat(2, minmax(0, 1fr));} }
+    @media (max-width: 420px){ .grid{grid-template-columns: 1fr;} }
+
+    label{display:block; font-size:14px; color:var(--text); margin-bottom:6px;}
+    .muted{color:var(--muted); font-size:13px;}
+    .field{display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:var(--fieldRadius); padding:10px; background:#fff;}
+    .field input, .field select{width:100%; border:none; outline:none; font-size:16px; background:transparent; color:var(--text);}
+    .camBtn{width:34px; height:34px; border:none; border-radius:9px; background:var(--orange); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+    .camBtn:active{transform:scale(.98);}
+    .camIcon{font-size:16px; line-height:1;}
+    .full{grid-column: 1 / -1;}
+    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
+    .btn{border:1px solid var(--line); border-radius:12px; padding:10px 14px; cursor:pointer; background:#f9fafb; color:var(--text); font-weight:600; font-size:14px;}
+    .btn.primary{background:var(--btn); color:var(--btnText); border-color:transparent;}
+    .btn.danger{background:var(--danger); color:var(--btnText); border-color:transparent;}
+    .btn:active{transform:scale(.99);}
+    hr.sep{border:none; border-top:1px solid var(--line); margin:18px 0;}
+    .title{font-weight:800; letter-spacing:.08em; font-size:14px;}
+    .resultsBox{border:1px dashed var(--line); border-radius:12px; padding:12px; background:#fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:14px; white-space:pre-wrap;}
+    .tinyNote{font-size:12px; color:var(--muted); margin-top:8px;}
+    .toast{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#111827; color:#fff; padding:10px 12px; border-radius:12px; font-size:13px; box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .2s ease; max-width:min(92vw, 520px);}
+    .toast.show{opacity:1;}
+
+    /* Conversion layout: Value + Gas + FROM + TO */
+    .convGrid{
+      display:grid;
+      grid-template-columns: 1.3fr 1fr 1fr 1fr;
+      gap:14px;
+      align-items:end;
+    }
+    @media (max-width: 980px){ .convGrid{grid-template-columns: 1fr 1fr;} }
+    @media (max-width: 520px){ .convGrid{grid-template-columns: 1fr;} }
+
+    .swapRow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px;}
+    .swapBtn{border:1px solid var(--line); border-radius:12px; padding:10px 14px; cursor:pointer; background:#fff; font-weight:700;}
+    .pill{border:1px solid var(--line); border-radius:999px; padding:6px 10px; font-size:12px; color:var(--muted); background:#fff;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+<header class="pageHeader">
+  <h1>Cryo Notes</h1>
+  <p>Digital field log</p>
+</header>
+
+    <!-- PAGE 1: FIELD LOG -->
+    <div class="panel">
+      <div class="row">
+        <div>
+          <label>Select Gas:</label>
+          <div class="field">
+            <select id="gasSelect">
+              <option value="LIN">LIN (Nitrogen)</option>
+              <option value="LOX">LOX (Oxygen)</option>
+              <option value="LAR">LAR (Argon)</option>
+              <option value="LCO2">LCO₂ (Liquid CO₂)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label>Tank ID</label>
+          <div class="field">
+            <input id="tankId" type="text" placeholder="Tank ID" />
+            <button class="camBtn" type="button" title="Photo (Tank ID label OCR)" data-ocr-target="tankId">
+              <span class="camIcon">📷</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="grid">
+        <div>
+          <label>Start Inches:</label>
+          <div class="field">
+            <input id="startIn" type="number" inputmode="decimal" placeholder="0" value="0" />
+            <button class="camBtn" type="button" title="Photo OCR Start Inches" data-ocr-target="startIn">
+              <span class="camIcon">📷</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label>Starting PSI:</label>
+          <div class="field">
+            <input id="startPsi" type="number" inputmode="decimal" placeholder="0" value="0" />
+            <button class="camBtn" type="button" title="Photo OCR Starting PSI" data-ocr-target="startPsi">
+              <span class="camIcon">📷</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label>End Inches:</label>
+          <div class="field">
+            <input id="endIn" type="number" inputmode="decimal" placeholder="0" value="0" />
+            <button class="camBtn" type="button" title="Photo OCR End Inches" data-ocr-target="endIn">
+              <span class="camIcon">📷</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label>Ending PSI:</label>
+          <div class="field">
+            <input id="endPsi" type="number" inputmode="decimal" placeholder="0" value="0" />
+            <button class="camBtn" type="button" title="Photo OCR Ending PSI" data-ocr-target="endPsi">
+              <span class="camIcon">📷</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="full">
+          <label>Total Metered SCF</label>
+          <div class="field">
+            <input id="meteredScf" type="number" inputmode="decimal" placeholder="Metered SCF" />
+            <button class="camBtn" type="button" title="Photo OCR Meter Reading" data-ocr-target="meteredScf">
+              <span class="camIcon">📷</span>
+            </button>
+          </div>
+
+          <div class="swapRow">
+            <span class="muted">SCF is 100x if stated on meter</span>
+            <span class="pill">
+              Meter Scale:
+              <select id="meterScale" style="border:none; outline:none; background:transparent; color:inherit; font-weight:800;">
+                <option value="1">x1</option>
+                <option value="10">x10</option>
+                <option value="100">x100</option>
+              </select>
+            </span>
+            <button class="btn" type="button" id="calcSummaryBtn">Compute Summary</button>
+          </div>
+
+          <div class="tinyNote">Tap 📷 on each field to capture reading (OCR), or enter values manually.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" type="button" id="clearBtn">Clear</button>
+        <button class="btn primary" type="button" id="saveBtn">💾 Save</button>
+        <button class="btn" type="button" id="recordsBtn">📋 Records</button>
+        <button class="btn primary" type="button" id="cryoCalBtn">Cryo Cal</button>
+        <button class="btn danger" type="button" id="logoutBtn">Logout</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="resultsBox" id="summaryBox">Summary will appear here…</div>
+      </div>
+
+      <input id="hiddenFileInput" type="file" accept="image/*" capture="environment" style="display:none;" />
+    </div>
+
+    <hr class="sep" />
+
+    <!-- UNIT CONVERSION (SCF / GALLONS / POUNDS ONLY) -->
+    <div class="panel">
+      <div class="title">UNIT CONVERSION (SCF / GALLONS / POUNDS):</div>
+      <div style="height:12px"></div>
+
+      <div class="convGrid">
+        <div>
+          <label>Value</label>
+          <div class="field">
+            <input id="convValue" type="number" inputmode="decimal" placeholder="Enter number" />
+            <button class="camBtn" type="button" title="Photo OCR Conversion Value" data-ocr-target="convValue">
+              <span class="camIcon">📷</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label>Select Gas</label>
+          <div class="field">
+            <select id="convGas">
+              <option value="LIN">LIN (Nitrogen)</option>
+              <option value="LOX">LOX (Oxygen)</option>
+              <option value="LAR">LAR (Argon)</option>
+              <option value="LCO2">LCO₂ (Liquid CO₂)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label>Convert FROM</label>
+          <div class="field">
+            <select id="fromUnit">
+              <option value="SCF">SCF</option>
+              <option value="GAL">GALLONS</option>
+              <option value="LB">POUNDS</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label>Convert TO</label>
+          <div class="field">
+            <select id="toUnit">
+              <option value="SCF">SCF</option>
+              <option value="GAL">GALLONS</option>
+              <option value="LB">POUNDS</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="swapRow">
+        <button class="swapBtn" type="button" id="swapUnitsBtn">⇄ Swap Units</button>
+        <button class="btn primary" type="button" id="convertBtn">Convert</button>
+        <button class="btn" type="button" id="convertClearBtn">Clear Convert</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>Converted Number:</label>
+        <div class="resultsBox" id="convertBox">Enter a value and choose FROM/TO units…</div>
+        <div class="tinyNote">
+          Uses standard published reference conversions (SCF/gal and lb/gal). Actual results can vary with conditions.
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script>
+    /******************************************************************
+     * STANDARD CRYO CONVERSIONS (REFERENCE VALUES)
+     * - SCF_PER_GAL: standard cubic feet of gas per 1 liquid gallon
+     * - LB_PER_GAL:  pounds of liquid per 1 liquid gallon
+     ******************************************************************/
+    const GASES = {
+      LIN:  { key:"LIN",  label:"LIN (Nitrogen)",     SCF_PER_GAL: 93.11,  LB_PER_GAL: 6.747 },
+      LOX:  { key:"LOX",  label:"LOX (Oxygen)",       SCF_PER_GAL: 115.1,  LB_PER_GAL: 9.528 },
+      LAR:  { key:"LAR",  label:"LAR (Argon)",        SCF_PER_GAL: 112.92, LB_PER_GAL: 11.63 },
+      LCO2: { key:"LCO2", label:"LCO₂ (Liquid CO₂)",  SCF_PER_GAL: 73.94,  LB_PER_GAL: 8.46  },
+    };
+
+    /******************************************************************
+     * STICKY ENTRIES (auto-save user inputs so refresh doesn't wipe them)
+     ******************************************************************/
+    const STICKY_KEY = "cryo_notes_sticky_v1";
+
+    class CryoConfigError extends Error {}
+    class CryoInputError extends Error {}
+
+    function toast(msg){
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      setTimeout(()=>t.classList.remove("show"), 2200);
+    }
+
+    function num(v){ return (v === "" || v === null || v === undefined) ? NaN : Number(v); }
+    function assertFinite(value, name){
+      if(!Number.isFinite(value)) throw new CryoInputError(`${name} must be a number. Got: ${value}`);
+    }
+
+    function getGas(key){
+      const cfg = GASES[key];
+      if(!cfg) throw new CryoConfigError(`Gas not configured: ${key}`);
+      if(!Number.isFinite(cfg.SCF_PER_GAL) || cfg.SCF_PER_GAL <= 0){
+        throw new CryoConfigError(`Missing/invalid SCF_PER_GAL for ${key}.`);
+      }
+      if(!Number.isFinite(cfg.LB_PER_GAL) || cfg.LB_PER_GAL <= 0){
+        throw new CryoConfigError(`Missing/invalid LB_PER_GAL for ${key}.`);
+      }
+      return cfg;
+    }
+
+    // Core conversions
+    function scfFromGallons(gas, gallons){
+      assertFinite(gallons, "Gallons");
+      const cfg = getGas(gas);
+      return gallons * cfg.SCF_PER_GAL;
+    }
+    function gallonsFromScf(gas, scf){
+      assertFinite(scf, "SCF");
+      const cfg = getGas(gas);
+      return scf / cfg.SCF_PER_GAL;
+    }
+    function poundsFromGallons(gas, gallons){
+      assertFinite(gallons, "Gallons");
+      const cfg = getGas(gas);
+      return gallons * cfg.LB_PER_GAL;
+    }
+    function gallonsFromPounds(gas, pounds){
+      assertFinite(pounds, "Pounds");
+      const cfg = getGas(gas);
+      return pounds / cfg.LB_PER_GAL;
+    }
+
+    function normalizeMeterScf(displayed, scale){
+      assertFinite(displayed, "Metered SCF");
+      const s = Number(scale);
+      if(![1,10,100].includes(s)) throw new CryoInputError(`Meter scale must be 1, 10, or 100. Got ${scale}`);
+      return displayed * s;
+    }
+
+    // OCR Hook (stub)
+    async function runOCRStub(file){
+      console.log("OCR stub received file:", file?.name);
+      return null; // no guessing
+    }
+
+    // UI wiring
+    const els = {
+      gasSelect: document.getElementById("gasSelect"),
+      tankId: document.getElementById("tankId"),
+      startIn: document.getElementById("startIn"),
+      startPsi: document.getElementById("startPsi"),
+      endIn: document.getElementById("endIn"),
+      endPsi: document.getElementById("endPsi"),
+      meteredScf: document.getElementById("meteredScf"),
+      meterScale: document.getElementById("meterScale"),
+      summaryBox: document.getElementById("summaryBox"),
+      hiddenFileInput: document.getElementById("hiddenFileInput"),
+
+      convValue: document.getElementById("convValue"),
+      convGas: document.getElementById("convGas"),
+      fromUnit: document.getElementById("fromUnit"),
+      toUnit: document.getElementById("toUnit"),
+      convertBox: document.getElementById("convertBox"),
+    };
+
+    /******************************************************************
+     * STICKY FIELD LIST (everything we want to persist)
+     ******************************************************************/
+    const STICKY_FIELDS = [
+      "gasSelect",
+      "tankId",
+      "startIn",
+      "startPsi",
+      "endIn",
+      "endPsi",
+      "meteredScf",
+      "meterScale",
+      "convValue",
+      "convGas",
+      "fromUnit",
+      "toUnit"
+    ];
+
+    function saveStickyState(){
+      const data = {};
+      STICKY_FIELDS.forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) data[id] = el.value;
+      });
+      localStorage.setItem(STICKY_KEY, JSON.stringify(data));
+    }
+
+    function restoreStickyState(){
+      try{
+        const raw = localStorage.getItem(STICKY_KEY);
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        Object.keys(data).forEach(id=>{
+          const el = document.getElementById(id);
+          if(el && data[id] !== undefined) el.value = data[id];
+        });
+      }catch(err){
+        console.warn("Sticky restore failed:", err);
+      }
+    }
+
+    // Attach sticky autosave to all tracked fields
+    STICKY_FIELDS.forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener("input", saveStickyState);
+      el.addEventListener("change", saveStickyState);
+    });
+
+    // Restore sticky state immediately on load
+    restoreStickyState();
+
+    let ocrTargetId = null;
+
+    document.querySelectorAll(".camBtn").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        ocrTargetId = btn.getAttribute("data-ocr-target");
+        els.hiddenFileInput.value = "";
+        els.hiddenFileInput.click();
+      });
+    });
+
+    els.hiddenFileInput.addEventListener("change", async (e)=>{
+      const file = e.target.files?.[0];
+      if(!file || !ocrTargetId) return;
+      toast("Photo captured. OCR processing (stub)...");
+      const result = await runOCRStub(file);
+
+      if(result !== null && result !== undefined){
+        const t = document.getElementById(ocrTargetId);
+        if(t) t.value = String(result);
+        toast("OCR filled the field.");
+        saveStickyState(); // IMPORTANT: keep OCR-filled values sticky
+      }else{
+        toast("OCR not enabled yet. Enter manually.");
+      }
+    });
+
+    // Clear (top) + clear sticky cache
+    document.getElementById("clearBtn").addEventListener("click", ()=>{
+      els.tankId.value = "";
+      els.startIn.value = 0;
+      els.startPsi.value = 0;
+      els.endIn.value = 0;
+      els.endPsi.value = 0;
+      els.meteredScf.value = "";
+      els.meterScale.value = "1";
+      els.summaryBox.textContent = "Summary will appear here…";
+
+      // ALSO reset conversion inputs
+      els.convValue.value = "";
+      els.convGas.value = "LIN";
+      els.fromUnit.value = "SCF";
+      els.toUnit.value = "GAL";
+      els.convertBox.textContent = "Enter a value and choose FROM/TO units…";
+
+      // Clear sticky state
+      localStorage.removeItem(STICKY_KEY);
+
+      toast("Cleared (including sticky data).");
+    });
+
+    // Save to localStorage (MVP records history)
+    const STORAGE_KEY = "cryo_page1_records_v1";
+    function getRecords(){
+      try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; }
+      catch{ return []; }
+    }
+    function setRecords(records){ localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+
+    document.getElementById("saveBtn").addEventListener("click", ()=>{
+      const rec = {
+        id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        createdAt: new Date().toISOString(),
+        gas: els.gasSelect.value,
+        tankId: els.tankId.value.trim(),
+        startIn: num(els.startIn.value),
+        startPsi: num(els.startPsi.value),
+        endIn: num(els.endIn.value),
+        endPsi: num(els.endPsi.value),
+        meteredDisplayedScf: num(els.meteredScf.value),
+        meterScale: Number(els.meterScale.value),
+      };
+      const records = getRecords();
+      records.unshift(rec);
+      setRecords(records);
+      toast("Saved record.");
+    });
+
+    document.getElementById("recordsBtn").addEventListener("click", ()=>{
+      const records = getRecords();
+      if(records.length === 0){ alert("No records saved yet."); return; }
+      const preview = records.slice(0, 10).map(r=>{
+        return [
+          `Date: ${r.createdAt}`,
+          `Gas: ${r.gas}`,
+          `Tank: ${r.tankId || "(blank)"}`,
+          `Start In: ${r.startIn} | End In: ${r.endIn}`,
+          `Meter: ${r.meteredDisplayedScf} (scale x${r.meterScale})`,
+          `---`
+        ].join("\n");
+      }).join("\n");
+      alert(preview);
+    });
+
+    document.getElementById("cryoCalBtn").addEventListener("click", ()=> toast("You are on Cryo Cal Page 1."));
+    document.getElementById("logoutBtn").addEventListener("click", ()=> toast("Logout (hook this to auth)."));
+
+    // Summary compute (meter normalization only)
+    document.getElementById("calcSummaryBtn").addEventListener("click", ()=>{
+      try{
+        const gas = els.gasSelect.value;
+        const tankId = els.tankId.value.trim();
+        const startInches = num(els.startIn.value);
+        const endInches = num(els.endIn.value);
+        const meteredDisplayed = num(els.meteredScf.value);
+        const meterScale = Number(els.meterScale.value);
+
+        let meterLine = "Meter-derived:\n";
+        if(Number.isFinite(meteredDisplayed)){
+          const meteredActual = normalizeMeterScf(meteredDisplayed, meterScale);
+          meterLine += `  Displayed SCF: ${meteredDisplayed}\n  Scale: x${meterScale}\n  Actual SCF: ${meteredActual.toFixed(2)}\n`;
+        }else{
+          meterLine += "  Meter SCF missing.\n";
+        }
+
+        const psiLine = `PSI (stored): Start PSI=${num(els.startPsi.value) || 0} | End PSI=${num(els.endPsi.value) || 0}\n`;
+
+        els.summaryBox.textContent =
+          `FIELD SUMMARY\n` +
+          `Gas: ${gas}\n` +
+          `Tank ID: ${tankId || "(blank)"}\n` +
+          `Start Inches (stored): ${startInches}\n` +
+          `End Inches (stored): ${endInches}\n\n` +
+          psiLine + "\n" +
+          meterLine + "\n";
+
+        // Make the summary sticky too (optional but useful)
+        saveStickyState();
+      }catch(err){
+        els.summaryBox.textContent = `ERROR:\n${err?.message || String(err)}\n`;
+        toast("Summary error — see box.");
+      }
+    });
+
+    // Swap units
+    document.getElementById("swapUnitsBtn").addEventListener("click", ()=>{
+      const a = els.fromUnit.value;
+      els.fromUnit.value = els.toUnit.value;
+      els.toUnit.value = a;
+      saveStickyState();
+      toast("Swapped units.");
+    });
+
+    // Convert FROM -> TO (SCF/GAL/LB only)
+    document.getElementById("convertBtn").addEventListener("click", ()=>{
+      try{
+        const gas = els.convGas.value;
+        const fromUnit = els.fromUnit.value;
+        const toUnit = els.toUnit.value;
+        const inputVal = num(els.convValue.value);
+
+        assertFinite(inputVal, "Value");
+
+        if(fromUnit === toUnit){
+          els.convertBox.textContent = `FROM and TO are the same unit.\nResult: ${inputVal} ${toUnit}`;
+          toast("No conversion needed.");
+          saveStickyState();
+          return;
+        }
+
+        // Normalize into gallons as the internal base
+        let gallons;
+        if(fromUnit === "GAL") gallons = inputVal;
+        else if(fromUnit === "SCF") gallons = gallonsFromScf(gas, inputVal);
+        else if(fromUnit === "LB") gallons = gallonsFromPounds(gas, inputVal);
+        else throw new CryoInputError(`Unknown FROM unit: ${fromUnit}`);
+
+        // gallons -> TO
+        let outputVal;
+        if(toUnit === "GAL") outputVal = gallons;
+        else if(toUnit === "SCF") outputVal = scfFromGallons(gas, gallons);
+        else if(toUnit === "LB") outputVal = poundsFromGallons(gas, gallons);
+        else throw new CryoInputError(`Unknown TO unit: ${toUnit}`);
+
+        // Show a clean response
+        els.convertBox.textContent =
+          `CONVERSION\n` +
+          `  Gas: ${gas}\n` +
+          `  FROM: ${inputVal} ${fromUnit}\n` +
+          `  TO:   ${outputVal.toFixed(6)} ${toUnit}\n\n` +
+          `REFERENCE CONSTANTS\n` +
+          `  SCF/gal: ${getGas(gas).SCF_PER_GAL}\n` +
+          `  lb/gal:  ${getGas(gas).LB_PER_GAL}\n`;
+
+        saveStickyState();
+        toast("Converted.");
+      }catch(err){
+        els.convertBox.textContent = `ERROR:\n${err?.message || String(err)}\n`;
+        toast("Conversion error.");
+        saveStickyState();
+      }
+    });
+
+    document.getElementById("convertClearBtn").addEventListener("click", ()=>{
+      els.convValue.value = "";
+      els.convertBox.textContent = "Enter a value and choose FROM/TO units…";
+      saveStickyState();
+      toast("Cleared convert.");
+    });
+  </script>
+</body>
+</html>
