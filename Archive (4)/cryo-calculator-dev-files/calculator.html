@@ -1796,7 +1796,7 @@
 
         <!-- Measurement Result Fields -->
         <div class="hm-row" style="margin-top: 12px">
-          <div style="display: flex; gap: 12px; align-items: flex-start; flex: 1">
+          <div style="display: flex; gap: 12px; align-items: center; flex: 1">
             <div style="flex: 1">
               <label class="hm-muted" style="display: block; margin-bottom: 4px">Diameter (in)</label>
               <input
@@ -1808,7 +1808,6 @@
                 aria-readonly="true"
                 style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; color: #666"
               />
-              <button id="hmAddDiameterGage" class="btn-ghost" type="button" style="margin-top: 6px; padding: 6px 10px; font-size: 11px; width: 100%">📷 Add Diameter Gage</button>
             </div>
             <div style="flex: 1">
               <label class="hm-muted" style="display: block; margin-bottom: 4px">Length (in)</label>
@@ -1821,43 +1820,26 @@
                 aria-readonly="true"
                 style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; color: #666"
               />
-              <button id="hmAddLengthGage" class="btn-ghost" type="button" style="margin-top: 6px; padding: 6px 10px; font-size: 11px; width: 100%">📷 Add Length Gage</button>
             </div>
           </div>
           <button id="hmApply" class="btn" type="button" style="align-self: flex-end; padding: 10px 20px">Apply</button>
         </div>
 
         <!-- Thumbnails with measured result labels -->
-        <div class="hm-thumbs" style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <!-- Diameter Image -->
-          <div style="flex: 1; min-width: 120px;">
+        <div class="hm-thumbs">
+          <div>
             <div class="hm-cap">
               <b>Diameter Image</b>
               <span class="hm-muted" id="hmValD"></span>
             </div>
             <div class="hm-thumb"><canvas id="hmThumbD"></canvas></div>
           </div>
-          <!-- Diameter Gage -->
-          <div style="flex: 1; min-width: 120px;">
-            <div class="hm-cap">
-              <b>Diameter Gage</b>
-            </div>
-            <div class="hm-thumb"><canvas id="hmThumbDGage"></canvas></div>
-          </div>
-          <!-- Length Image -->
-          <div style="flex: 1; min-width: 120px;">
+          <div>
             <div class="hm-cap">
               <b>Length Image</b>
               <span class="hm-muted" id="hmValL"></span>
             </div>
             <div class="hm-thumb"><canvas id="hmThumbL"></canvas></div>
-          </div>
-          <!-- Length Gage -->
-          <div style="flex: 1; min-width: 120px;">
-            <div class="hm-cap">
-              <b>Length Gage</b>
-            </div>
-            <div class="hm-thumb"><canvas id="hmThumbLGage"></canvas></div>
           </div>
         </div>
 
@@ -1965,12 +1947,6 @@
         const vD = document.getElementById("hmValD");
         const vL = document.getElementById("hmValL");
 
-        // Gage Thumbs
-        const cThumbDGage = document.getElementById("hmThumbDGage");
-        const cThumbLGage = document.getElementById("hmThumbLGage");
-        const btnAddDiameterGage = document.getElementById("hmAddDiameterGage");
-        const btnAddLengthGage = document.getElementById("hmAddLengthGage");
-
         // State
         let mode = "D"; // 'D' or 'L' - which dimension to measure
         let stream = null;
@@ -1983,10 +1959,6 @@
         let measuredD = null,
           measuredL = null;
         let drawMode = "ruler"; // 'ruler' or 'measurement'
-
-        // Gage State
-        let gageStillD = null; // Diameter gage image
-        let gageStillL = null; // Length gage image
 
         // Zoom & Pan state
         let scale = 1.0; // Zoom level
@@ -2641,53 +2613,6 @@
           autoCalculate();
         });
 
-        // Helper function to paint gage thumbnail (no lines, just image)
-        function paintGageThumb(dstCanvas, img) {
-          if (!dstCanvas || !img) return;
-          const w = (dstCanvas.width = Math.min(640, dstCanvas.parentElement.clientWidth));
-          const h = (dstCanvas.height = Math.round((w * 3) / 4));
-          const tctx = dstCanvas.getContext("2d");
-          tctx.clearRect(0, 0, w, h);
-          drawContain(img, tctx, w, h);
-        }
-
-        // Capture gage image from current camera feed
-        function captureGageImage(gageType) {
-          if (!video.videoWidth) {
-            alert("Please wait for the camera to initialize.");
-            return;
-          }
-
-          // Capture current frame from video
-          const tmp = document.createElement("canvas");
-          tmp.width = video.videoWidth;
-          tmp.height = video.videoHeight;
-          const tmpCtx = tmp.getContext("2d");
-          tmpCtx.drawImage(video, 0, 0);
-
-          const img = new Image();
-          img.onload = () => {
-            if (gageType === "D") {
-              gageStillD = img;
-              paintGageThumb(cThumbDGage, img);
-            } else {
-              gageStillL = img;
-              paintGageThumb(cThumbLGage, img);
-            }
-          };
-          img.src = tmp.toDataURL("image/png");
-        }
-
-        // Add Diameter Gage button handler
-        btnAddDiameterGage?.addEventListener("click", () => {
-          captureGageImage("D");
-        });
-
-        // Add Length Gage button handler
-        btnAddLengthGage?.addEventListener("click", () => {
-          captureGageImage("L");
-        });
-
         // Apply button - transfer values to main calculator page and close modal
         btnApply.addEventListener("click", () => {
           const diameterValue = parseFloat(calculatedDiameter.value);
@@ -2735,18 +2660,6 @@
               ctx.clearRect(0, 0, cThumbL.width, cThumbL.height);
             }
 
-            // Clear gage thumbnails
-            gageStillD = null;
-            gageStillL = null;
-            if (cThumbDGage) {
-              const ctx = cThumbDGage.getContext("2d");
-              ctx.clearRect(0, 0, cThumbDGage.width, cThumbDGage.height);
-            }
-            if (cThumbLGage) {
-              const ctx = cThumbLGage.getContext("2d");
-              ctx.clearRect(0, 0, cThumbLGage.width, cThumbLGage.height);
-            }
-
             // Close the modal
             closeModal();
           } else {
@@ -2766,18 +2679,6 @@
           drawMode = "ruler";
           vD.textContent = "";
           vL.textContent = "";
-          // Reset gage state
-          gageStillD = null;
-          gageStillL = null;
-          // Clear gage canvases
-          if (cThumbDGage) {
-            const ctx = cThumbDGage.getContext("2d");
-            ctx.clearRect(0, 0, cThumbDGage.width, cThumbDGage.height);
-          }
-          if (cThumbLGage) {
-            const ctx = cThumbLGage.getContext("2d");
-            ctx.clearRect(0, 0, cThumbLGage.width, cThumbLGage.height);
-          }
           // Clear all input fields
           if (calculatedDiameter) calculatedDiameter.value = "";
           if (calculatedLength) calculatedLength.value = "";
