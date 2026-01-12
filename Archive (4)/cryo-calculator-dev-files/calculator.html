@@ -754,7 +754,7 @@
         min-width: 100px;
       }
       /* Capture button - large circular */
-      .ocr-capture-btn {
+      /* .ocr-capture-btn {
         width: 72px;
         height: 72px;
         border-radius: 50%;
@@ -775,7 +775,47 @@
         border-color: rgba(255,255,255,0.4);
         color: #fff;
         font-size: 14px;
-      }
+      } */
+.ocr-capture-btn {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* Inner white circle (iPhone style) */
+.ocr-capture-btn::before {
+  content: "";
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+/* Press animation */
+.ocr-capture-btn:active {
+  transform: scale(0.94);
+}
+
+.ocr-capture-btn:active::before {
+  transform: scale(0.96);
+}
+
+/* Retake / secondary state */
+.ocr-capture-btn.retake {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.ocr-capture-btn.retake::before {
+  background: rgba(255, 255, 255, 0.35);
+}
+
       /* Result overlay */
       .ocr-result {
         background: rgba(22, 163, 74, 0.95);
@@ -2015,7 +2055,7 @@
 
         <!-- Capture/Retake Controls -->
         <div class="ocr-controls">
-          <button id="ocrCapture" type="button" class="ocr-capture-btn" title="Capture">📷</button>
+          <button id="ocrCapture" type="button" class="ocr-capture-btn" title="Capture"></button>
           <button id="ocrRetake" type="button" class="ocr-capture-btn retake" style="display: none;">↺ Retake</button>
         </div>
 
