@@ -1762,8 +1762,8 @@
       $("#resHint").textContent = "";
       totalSCF = 0;
 
-      // Clear sessionStorage for reserve calculator
-      sessionStorage.removeItem("reserveCalculatorData");
+      // Clear localStorage for reserve calculator
+      localStorage.removeItem("reserveCalculatorData");
     });
   }
 
@@ -1783,11 +1783,11 @@
     });
     data.totalSCF = totalSCF; // Save the totalSCF variable
     data.resHint = $("#resHint")?.textContent || "";
-    sessionStorage.setItem("reserveCalculatorData", JSON.stringify(data));
+    localStorage.setItem("reserveCalculatorData", JSON.stringify(data));
   }
 
   function loadReserveFromSession() {
-    const saved = sessionStorage.getItem("reserveCalculatorData");
+    const saved = localStorage.getItem("reserveCalculatorData");
     if (!saved) return;
 
     try {
@@ -3596,7 +3596,7 @@
             window.scfAdjustmentPercent = 0; // Reset adjustment percentage
             totalFormulatedScfEl.value = scf.toFixed(2);
 
-            // Save to sessionStorage after calculation
+            // Save to localStorage after calculation
             if (typeof saveFormToSession === "function") {
               saveFormToSession();
             }
@@ -3632,7 +3632,7 @@
           // Update the field
           totalFormulatedScfEl.value = newTotal.toFixed(2);
 
-          // Save to sessionStorage after adjustment
+          // Save to localStorage after adjustment
           if (typeof saveFormToSession === "function") {
             saveFormToSession();
           }
@@ -3669,8 +3669,8 @@
           if ($btnStop) $btnStop.disabled = true;
           setGeoVisibility();
 
-          // Clear sessionStorage when clearing form
-          sessionStorage.removeItem("calculatorFormData");
+          // Clear localStorage when clearing form
+          localStorage.removeItem("calculatorFormData");
         };
 
         /* ----- SESSION STORAGE: Save/Load Form Values ----- */
@@ -3681,7 +3681,7 @@
           "totalFormulatedScf"
         ];
 
-        // Save form data to sessionStorage
+        // Save form data to localStorage
         function saveFormToSession() {
           const formData = {};
 
@@ -3704,12 +3704,12 @@
           if (window.originalCalculatedScf) formData.originalCalculatedScf = window.originalCalculatedScf;
           if (window.scfAdjustmentPercent) formData.scfAdjustmentPercent = window.scfAdjustmentPercent;
 
-          sessionStorage.setItem("calculatorFormData", JSON.stringify(formData));
+          localStorage.setItem("calculatorFormData", JSON.stringify(formData));
         }
 
-        // Load form data from sessionStorage
+        // Load form data from localStorage
         function loadFormFromSession() {
-          const saved = sessionStorage.getItem("calculatorFormData");
+          const saved = localStorage.getItem("calculatorFormData");
           if (!saved) return;
 
           try {
@@ -3749,7 +3749,7 @@
             // Trigger visibility updates
             setGeoVisibility();
           } catch (e) {
-            console.error("Error loading form data from sessionStorage:", e);
+            console.error("Error loading form data from localStorage:", e);
           }
         }
 
@@ -3914,8 +3914,8 @@
     err.style.display = "none";
     calcBtn.disabled = true;
 
-    // Clear sessionStorage for split calculator
-    sessionStorage.removeItem("splitCalculatorData");
+    // Clear localStorage for split calculator
+    localStorage.removeItem("splitCalculatorData");
   });
 
   /* ----------------------------
@@ -3933,11 +3933,11 @@
       const el = $(id);
       if (el) data[id] = el.value;
     });
-    sessionStorage.setItem("splitCalculatorData", JSON.stringify(data));
+    localStorage.setItem("splitCalculatorData", JSON.stringify(data));
   }
 
   function loadSplitFromSession() {
-    const saved = sessionStorage.getItem("splitCalculatorData");
+    const saved = localStorage.getItem("splitCalculatorData");
     if (!saved) return;
 
     try {
@@ -4943,8 +4943,8 @@ ${meterHtml}</pre>`;
           if (els.convValue) els.convValue.value = "";
           if (els.convertBox) els.convertBox.textContent = "Enter a value and choose FROM/TO units…";
 
-          // Clear sessionStorage for Cryo Notes
-          sessionStorage.removeItem("cryoNotesData");
+          // Clear localStorage for Cryo Notes
+          localStorage.removeItem("cryoNotesData");
         });
 
         // Save to Excel sheet (cryo_notes)
@@ -5161,11 +5161,11 @@ REFERENCE CONSTANTS
             const el = document.getElementById(id);
             if (el) data[id] = el.value;
           });
-          sessionStorage.setItem("cryoNotesData", JSON.stringify(data));
+          localStorage.setItem("cryoNotesData", JSON.stringify(data));
         }
 
         function loadNotesFromSession() {
-          const saved = sessionStorage.getItem("cryoNotesData");
+          const saved = localStorage.getItem("cryoNotesData");
           if (!saved) return;
 
           try {
