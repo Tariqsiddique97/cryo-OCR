@@ -748,26 +748,44 @@
       }
       /* Bottom controls area */
       .ocr-bottom {
-        position: absolute;
+        position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        padding: 20px;
-        padding-bottom: max(20px, env(safe-area-inset-bottom));
-        background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        padding: 12px 20px;
+        padding-top: 12px;
+        padding-bottom: calc(80px + env(safe-area-inset-bottom));
+        background: rgba(0,0,0,0.92);
         z-index: 10;
+        max-height: 50vh;
+        overflow-y: auto;
+        border-radius: 16px 16px 0 0;
+      }
+      /* For smaller screens, add more bottom padding */
+      @media (max-height: 667px) {
+        .ocr-bottom {
+          padding-bottom: calc(100px + env(safe-area-inset-bottom));
+        }
+      }
+      /* For very small screens */
+      @media (max-height: 568px) {
+        .ocr-bottom {
+          padding-bottom: calc(120px + env(safe-area-inset-bottom));
+          max-height: 45vh;
+        }
       }
       .ocr-hint {
         text-align: center;
         color: rgba(255,255,255,0.8);
-        font-size: 14px;
-        margin-bottom: 16px;
+        font-size: 12px;
+        margin-bottom: 8px;
+        line-height: 1.3;
       }
       .ocr-controls {
         display: flex;
         gap: 12px;
         justify-content: center;
-        margin-bottom: 16px;
+        margin-bottom: 8px;
       }
       .ocr-controls button {
         min-width: 100px;
@@ -796,8 +814,8 @@
         font-size: 14px;
       } */
 .ocr-capture-btn {
-  width: 78px;
-  height: 78px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: transparent;
   cursor: pointer;
@@ -810,8 +828,8 @@
 /* Inner white circle (iPhone style) */
 .ocr-capture-btn::before {
   content: "";
-  width: 62px;
-  height: 62px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: #ffffff;
   transition: transform 0.12s ease, background 0.12s ease;
@@ -838,9 +856,9 @@
       /* Result overlay */
       .ocr-result {
         background: rgba(22, 163, 74, 0.95);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 8px;
         display: none;
         text-align: center;
       }
@@ -851,12 +869,12 @@
         background: rgba(220, 38, 38, 0.95);
       }
       .ocr-result-label {
-        font-size: 12px;
+        font-size: 11px;
         color: rgba(255,255,255,0.8);
-        margin-bottom: 4px;
+        margin-bottom: 3px;
       }
       .ocr-result-value {
-        font-size: 36px;
+        font-size: 28px;
         font-weight: 700;
         color: #fff;
       }
@@ -866,16 +884,17 @@
       /* Action buttons row */
       .ocr-actions {
         display: flex;
-        gap: 12px;
+        gap: 8px;
         justify-content: center;
+        margin-top: 6px;
       }
       .ocr-actions button {
         flex: 1;
-        max-width: 160px;
-        padding: 14px 20px;
-        font-size: 16px;
+        max-width: 140px;
+        padding: 10px 14px;
+        font-size: 14px;
         font-weight: 600;
-        border-radius: 12px;
+        border-radius: 8px;
       }
       .ocr-actions .btn-ghost {
         background: rgba(255,255,255,0.2);
