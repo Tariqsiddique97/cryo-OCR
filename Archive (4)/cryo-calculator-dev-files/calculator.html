@@ -1761,8 +1761,63 @@
 
       $("#resHint").textContent = "";
       totalSCF = 0;
+
+      // Clear sessionStorage for reserve calculator
+      sessionStorage.removeItem("reserveCalculatorData");
     });
   }
+
+  /* -------------------------------------------
+     SESSION STORAGE: Reserve Calculator
+  -------------------------------------------- */
+  const reserveFields = [
+    "resAmount", "resInputType", "resGas",
+    "resT1", "resT2", "resT3", "resT4", "resRemaining"
+  ];
+
+  function saveReserveToSession() {
+    const data = {};
+    reserveFields.forEach(id => {
+      const el = $(id);
+      if (el) data[id] = el.value;
+    });
+    data.totalSCF = totalSCF; // Save the totalSCF variable
+    data.resHint = $("#resHint")?.textContent || "";
+    sessionStorage.setItem("reserveCalculatorData", JSON.stringify(data));
+  }
+
+  function loadReserveFromSession() {
+    const saved = sessionStorage.getItem("reserveCalculatorData");
+    if (!saved) return;
+
+    try {
+      const data = JSON.parse(saved);
+      reserveFields.forEach(id => {
+        const el = $(id);
+        if (el && data[id] !== undefined && data[id] !== "") {
+          el.value = data[id];
+        }
+      });
+      if (data.totalSCF !== undefined) totalSCF = data.totalSCF;
+      if (data.resHint) $("#resHint").textContent = data.resHint;
+    } catch (e) {
+      console.error("Error loading reserve data:", e);
+    }
+  }
+
+  function setupReserveAutoSave() {
+    reserveFields.forEach(id => {
+      const el = $(id);
+      if (el) {
+        el.addEventListener("input", saveReserveToSession);
+        el.addEventListener("change", saveReserveToSession);
+      }
+    });
+  }
+
+  // Load and setup auto-save for reserve calculator
+  loadReserveFromSession();
+  setupReserveAutoSave();
 
 })();
 </script>
@@ -3540,6 +3595,11 @@
             window.originalCalculatedScf = scf;
             window.scfAdjustmentPercent = 0; // Reset adjustment percentage
             totalFormulatedScfEl.value = scf.toFixed(2);
+
+            // Save to sessionStorage after calculation
+            if (typeof saveFormToSession === "function") {
+              saveFormToSession();
+            }
           }
 
           // push to Split page input
@@ -3571,6 +3631,11 @@
 
           // Update the field
           totalFormulatedScfEl.value = newTotal.toFixed(2);
+
+          // Save to sessionStorage after adjustment
+          if (typeof saveFormToSession === "function") {
+            saveFormToSession();
+          }
         };
 
         /* ----- CLEAR (exposed for button onclick) ----- */
@@ -3603,7 +3668,118 @@
           if ($btnStart) $btnStart.disabled = false;
           if ($btnStop) $btnStop.disabled = true;
           setGeoVisibility();
+
+          // Clear sessionStorage when clearing form
+          sessionStorage.removeItem("calculatorFormData");
         };
+
+        /* ----- SESSION STORAGE: Save/Load Form Values ----- */
+        const formFields = [
+          "tankType", "fullInches", "fullCap", "capUnit", "gas",
+          "startInches", "startPsi", "endInches", "endPsi",
+          "flowValue", "meteredScf", "geoDiameter", "geoLength",
+          "totalFormulatedScf"
+        ];
+
+        // Save form data to sessionStorage
+        function saveFormToSession() {
+          const formData = {};
+
+          // Save input/select values
+          formFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) formData[id] = el.value;
+          });
+
+          // Save checkboxes
+          const chkEstimateD = document.getElementById("chkEstimateD");
+          const useTimerPrimary = document.getElementById("useTimerPrimary");
+          if (chkEstimateD) formData.chkEstimateD = chkEstimateD.checked;
+          if (useTimerPrimary) formData.useTimerPrimary = useTimerPrimary.checked;
+
+          // Save unit switch state
+          if (unitSwitch) formData.unitSwitchOn = unitSwitch.classList.contains("on");
+
+          // Save adjustment tracking variables
+          if (window.originalCalculatedScf) formData.originalCalculatedScf = window.originalCalculatedScf;
+          if (window.scfAdjustmentPercent) formData.scfAdjustmentPercent = window.scfAdjustmentPercent;
+
+          sessionStorage.setItem("calculatorFormData", JSON.stringify(formData));
+        }
+
+        // Load form data from sessionStorage
+        function loadFormFromSession() {
+          const saved = sessionStorage.getItem("calculatorFormData");
+          if (!saved) return;
+
+          try {
+            const formData = JSON.parse(saved);
+
+            // Restore input/select values
+            formFields.forEach(id => {
+              const el = document.getElementById(id);
+              if (el && formData[id] !== undefined && formData[id] !== "") {
+                el.value = formData[id];
+              }
+            });
+
+            // Restore checkboxes
+            const chkEstimateD = document.getElementById("chkEstimateD");
+            const useTimerPrimary = document.getElementById("useTimerPrimary");
+            if (chkEstimateD && formData.chkEstimateD !== undefined) {
+              chkEstimateD.checked = formData.chkEstimateD;
+            }
+            if (useTimerPrimary && formData.useTimerPrimary !== undefined) {
+              useTimerPrimary.checked = formData.useTimerPrimary;
+            }
+
+            // Restore unit switch state
+            if (unitSwitch && formData.unitSwitchOn !== undefined) {
+              setUnitSwitch(formData.unitSwitchOn);
+            }
+
+            // Restore adjustment tracking variables
+            if (formData.originalCalculatedScf) {
+              window.originalCalculatedScf = formData.originalCalculatedScf;
+            }
+            if (formData.scfAdjustmentPercent !== undefined) {
+              window.scfAdjustmentPercent = formData.scfAdjustmentPercent;
+            }
+
+            // Trigger visibility updates
+            setGeoVisibility();
+          } catch (e) {
+            console.error("Error loading form data from sessionStorage:", e);
+          }
+        }
+
+        // Auto-save on input changes
+        function setupAutoSave() {
+          formFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+              el.addEventListener("input", saveFormToSession);
+              el.addEventListener("change", saveFormToSession);
+            }
+          });
+
+          // Save on checkbox changes
+          const chkEstimateD = document.getElementById("chkEstimateD");
+          const useTimerPrimary = document.getElementById("useTimerPrimary");
+          if (chkEstimateD) chkEstimateD.addEventListener("change", saveFormToSession);
+          if (useTimerPrimary) useTimerPrimary.addEventListener("change", saveFormToSession);
+
+          // Save when unit switch is toggled
+          if (unitSwitch) {
+            unitSwitch.addEventListener("click", saveFormToSession);
+          }
+        }
+
+        // Load form data on page load
+        loadFormFromSession();
+
+        // Setup auto-save listeners
+        setupAutoSave();
       })();
     </script>
     <!-- === SCRIPTS: CALCULATOR END === -->
@@ -3737,7 +3913,60 @@
 
     err.style.display = "none";
     calcBtn.disabled = true;
+
+    // Clear sessionStorage for split calculator
+    sessionStorage.removeItem("splitCalculatorData");
   });
+
+  /* ----------------------------
+     SESSION STORAGE: Split Calculator
+  -----------------------------*/
+  const splitFields = [
+    "splitInput", "splitInputType", "splitGas", "splitTotalSCF",
+    "t1Full", "t1Gal", "t1StartInches", "t1StartPsi", "t1EndInches", "t1EndPsi", "t1SCF",
+    "t2Full", "t2Gal", "t2StartInches", "t2StartPsi", "t2EndInches", "t2EndPsi", "t2SCF"
+  ];
+
+  function saveSplitToSession() {
+    const data = {};
+    splitFields.forEach(id => {
+      const el = $(id);
+      if (el) data[id] = el.value;
+    });
+    sessionStorage.setItem("splitCalculatorData", JSON.stringify(data));
+  }
+
+  function loadSplitFromSession() {
+    const saved = sessionStorage.getItem("splitCalculatorData");
+    if (!saved) return;
+
+    try {
+      const data = JSON.parse(saved);
+      splitFields.forEach(id => {
+        const el = $(id);
+        if (el && data[id] !== undefined && data[id] !== "") {
+          el.value = data[id];
+        }
+      });
+      checkReady();
+    } catch (e) {
+      console.error("Error loading split data:", e);
+    }
+  }
+
+  function setupSplitAutoSave() {
+    splitFields.forEach(id => {
+      const el = $(id);
+      if (el) {
+        el.addEventListener("input", saveSplitToSession);
+        el.addEventListener("change", saveSplitToSession);
+      }
+    });
+  }
+
+  // Load and setup auto-save for split calculator
+  loadSplitFromSession();
+  setupSplitAutoSave();
 
 })();
 </script>
@@ -4713,6 +4942,9 @@ ${meterHtml}</pre>`;
           if (els.summaryBox) els.summaryBox.textContent = "Summary will appear here…";
           if (els.convValue) els.convValue.value = "";
           if (els.convertBox) els.convertBox.textContent = "Enter a value and choose FROM/TO units…";
+
+          // Clear sessionStorage for Cryo Notes
+          sessionStorage.removeItem("cryoNotesData");
         });
 
         // Save to Excel sheet (cryo_notes)
@@ -4913,6 +5145,55 @@ REFERENCE CONSTANTS
             updateGageToggleVisuals(gageToggle.checked);
           });
         }
+
+        /* -------------------------------------------
+           SESSION STORAGE: Cryo Notes
+        -------------------------------------------- */
+        const notesFields = [
+          "notesGasSelect", "notesTankId", "notesStartIn", "notesStartPsi",
+          "notesEndIn", "notesEndPsi", "notesMeteredScf", "notesMeterScale",
+          "notesConvValue", "notesConvGas", "notesConvFromUnit", "notesConvToUnit"
+        ];
+
+        function saveNotesToSession() {
+          const data = {};
+          notesFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) data[id] = el.value;
+          });
+          sessionStorage.setItem("cryoNotesData", JSON.stringify(data));
+        }
+
+        function loadNotesFromSession() {
+          const saved = sessionStorage.getItem("cryoNotesData");
+          if (!saved) return;
+
+          try {
+            const data = JSON.parse(saved);
+            notesFields.forEach(id => {
+              const el = document.getElementById(id);
+              if (el && data[id] !== undefined && data[id] !== "") {
+                el.value = data[id];
+              }
+            });
+          } catch (e) {
+            console.error("Error loading cryo notes data:", e);
+          }
+        }
+
+        function setupNotesAutoSave() {
+          notesFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+              el.addEventListener("input", saveNotesToSession);
+              el.addEventListener("change", saveNotesToSession);
+            }
+          });
+        }
+
+        // Load and setup auto-save for cryo notes
+        loadNotesFromSession();
+        setupNotesAutoSave();
       })();
     </script>
     <!-- === SCRIPTS: CRYO NOTES END === -->
