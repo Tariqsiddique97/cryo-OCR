@@ -175,6 +175,25 @@
         color: #1a73e8;
         border: 1px solid #cbd5e1;
       }
+      .btn-adjustment {
+        background: #eef2ff;
+        color: #1a73e8;
+        border: 1px solid #c7d2fe;
+        padding: 10px 14px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        min-width: 55px;
+        height: 42px;
+        box-sizing: border-box;
+      }
+      .btn-adjustment:hover {
+        background: #dbeafe;
+        border-color: #99b6f9;
+      }
+      .btn-adjustment:active {
+        filter: brightness(0.95);
+      }
 
       .row2 {
         display: grid;
@@ -1250,6 +1269,29 @@
             </div>
             <div class="muted">
               Tap 📷 on each field to capture reading, or enter values manually.
+            </div>
+
+            <!-- Total Formulated SCF -->
+            <div style="display: flex; gap: 4px; align-items: flex-end; overflow-x: auto; margin-top: 10px;">
+              <div style="flex: 2; min-width: 120px;">
+                <label>Total Formulated SCF:</label>
+                <div class="field-with-camera">
+                  <input id="totalFormulatedScf" type="text" placeholder="Total SCF" readonly />
+                  <button type="button" class="btn-camera-sm" onclick="openOcrModal('totalFormulatedScf')" title="Capture Total SCF">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div style="display: flex; gap: 4px; align-items: flex-end;">
+                <button type="button" class="btn-adjustment" onclick="adjustTotalScf(0.05)" title="Add 0.05% to total">+.05</button>
+                <button type="button" class="btn-adjustment" onclick="adjustTotalScf(0.10)" title="Add 0.10% to total">.10</button>
+              </div>
+            </div>
+            <div class="muted">
+              Original SCF is not changed, user can add .05% or .10% to the total calculation.
             </div>
 
             <!-- Timer + Flow -->
@@ -2947,12 +2989,16 @@
             return;
           }
 
-          // Compute and display first
-          window.calculate();
-
-          // Check if calculation produced valid output
+          // Check if calculation has been performed (don't recalculate to preserve user adjustments)
           if (!output || !output.textContent || output.textContent.includes("Enter values") || output.textContent.includes("Please enter")) {
-            alert("Cannot save - please ensure all required fields are filled.");
+            alert("Cannot save - please calculate first before saving.");
+            return;
+          }
+
+          // Check if Total Formulated SCF has a value
+          const totalFormulatedScf = document.getElementById("totalFormulatedScf")?.value;
+          if (!totalFormulatedScf || totalFormulatedScf === "") {
+            alert("Cannot save - please calculate first to generate Total Formulated SCF.");
             return;
           }
 
@@ -2985,11 +3031,13 @@
             gas: document.getElementById("gas")?.value || "",
             flow_value: document.getElementById("flowValue")?.value || "",
             metered_scf: document.getElementById("meteredScf")?.value || "",
+            total_formulated_scf: document.getElementById("totalFormulatedScf")?.value || "",
             timer_elapsed: document.getElementById("elapsed")?.textContent || "",
             result_text: cleanResultText(output.textContent).substring(0, 800) + " • " +
                    "Starting (in)/PSI: " + (document.getElementById("startInches")?.value || "-") + " | " + (document.getElementById("startPsi")?.value || "-") + " • " +
                    "Ending (in)/PSI: " + (document.getElementById("endInches")?.value || "-") + " | " + (document.getElementById("endPsi")?.value || "-") +
-                   (document.getElementById("meteredScf")?.value ? " • Metered: " + document.getElementById("meteredScf")?.value + " SCF" : ""),
+                   (document.getElementById("meteredScf")?.value ? " • Metered: " + document.getElementById("meteredScf")?.value + " SCF" : "") +
+                   (document.getElementById("totalFormulatedScf")?.value ? " • Total Formulated: " + document.getElementById("totalFormulatedScf")?.value + " SCF" : ""),
             timestamp: new Date().toISOString()
           };
 
@@ -3485,18 +3533,56 @@
 
           output.innerHTML = html;
 
+          // Update Total Formulated SCF field
+          const totalFormulatedScfEl = document.getElementById("totalFormulatedScf");
+          if (totalFormulatedScfEl) {
+            // Store the original calculated SCF value (global)
+            window.originalCalculatedScf = scf;
+            window.scfAdjustmentPercent = 0; // Reset adjustment percentage
+            totalFormulatedScfEl.value = scf.toFixed(2);
+          }
+
           // push to Split page input
           if (typeof window.setAutoSCFTotal === "function") {
             window.setAutoSCFTotal(Number(scf.toFixed(0)));
           }
         };
 
+        /* ----- ADJUST TOTAL SCF (exposed for adjustment buttons) ----- */
+        window.adjustTotalScf = function (percentAmount) {
+          // Check if we have a calculated value
+          if (!window.originalCalculatedScf || window.originalCalculatedScf <= 0) {
+            alert("Please calculate first before adjusting the total.");
+            return;
+          }
+
+          const totalFormulatedScfEl = document.getElementById("totalFormulatedScf");
+          if (!totalFormulatedScfEl) return;
+
+          // Add the adjustment percentage (0.05 means 0.05%, 0.10 means 0.10%)
+          window.scfAdjustmentPercent = (window.scfAdjustmentPercent || 0) + percentAmount;
+
+          // Calculate percentage adjustment (convert 0.05% to 0.0005, 0.10% to 0.0010)
+          const percentageMultiplier = window.scfAdjustmentPercent / 100;
+          const adjustment = window.originalCalculatedScf * percentageMultiplier;
+
+          // Calculate new total
+          const newTotal = window.originalCalculatedScf + adjustment;
+
+          // Update the field
+          totalFormulatedScfEl.value = newTotal.toFixed(2);
+        };
+
         /* ----- CLEAR (exposed for button onclick) ----- */
         window.clearForm = function () {
-          ["fullInches", "fullCap", "startInches", "endInches", "startPsi", "endPsi", "flowValue", "geoDiameter", "geoLength", "meteredScf"].forEach((id) => {
+          ["fullInches", "fullCap", "startInches", "endInches", "startPsi", "endPsi", "flowValue", "geoDiameter", "geoLength", "meteredScf", "totalFormulatedScf"].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.value = "";
           });
+          // Reset Total Formulated SCF tracking variables
+          window.originalCalculatedScf = 0;
+          window.scfAdjustmentPercent = 0;
+
           const capSel = document.getElementById("capUnit");
           if (capSel) capSel.value = "scf";
           const chk1 = document.getElementById("chkEstimateD");
