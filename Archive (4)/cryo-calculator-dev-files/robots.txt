@@ -1,0 +1,35 @@
+# © 2025 RMC Squared Inc. All Rights Reserved.
+#
+# The Cryo Tank Calculator, including its source code, algorithms, and interface design,
+# is proprietary and confidential to RMC Squared Inc. Unauthorized reproduction,
+# distribution, modification, or reverse engineering of this application or its underlying
+# logic is strictly prohibited and protected under U.S. and international copyright and
+# trade secret laws.
+#
+# © 2025 RMC Squared Inc. All Rights Reserved.
+# Cryo Tank Calculator source code registered with the U.S. Copyright Office,
+# Case No. 1-15021517871 (filed October 15, 2025).
+#
+# For licensed use or integration inquiries, contact chrismcbrown@gmail.com
+
+# Robots.txt for Cryo Tank Calculator
+# This application is proprietary software - crawling and indexing restricted
+
+User-agent: *
+Disallow: /
+
+# Allow crawling of only the main landing page (optional - uncomment if needed)
+# Allow: /index.html
+# Allow: /login.html
+
+# Prevent indexing of sensitive or functional pages
+Disallow: /calculator.html
+Disallow: /records.html
+Disallow: /reset-password.html
+Disallow: /*.js$
+Disallow: /*.json$
+Disallow: /constant.js
+Disallow: /sw.js
+
+# Prevent crawling of icon assets
+Disallow: /icons/
